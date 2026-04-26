@@ -57,6 +57,12 @@ jobs:
       - name: Build installer (Inno Setup)
         run: iscc packaging\windows\installer.iss
 
+      - name: Stable-named copy (for landing's permanent URL)
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist\installer\Hermes-Setup-*.exe | Select-Object -First 1
+          Copy-Item $installer.FullName dist\installer\Hermes-Setup.exe
+
       - name: Compute SHA-256 checksums
         shell: pwsh
         run: |
@@ -70,6 +76,7 @@ jobs:
           path: |
             dist/Hermes.exe
             dist/installer/Hermes-Setup-*.exe
+            dist/installer/Hermes-Setup.exe
             dist/SHA256SUMS.txt
 
   macos:
@@ -110,6 +117,11 @@ jobs:
           cd dist
           zip -r -y Hermes.app.zip Hermes.app
 
+      - name: Stable-named copy (for landing's permanent URL)
+        run: |
+          src=$(ls dist/installer/Hermes-*.pkg | head -n1)
+          cp "$src" dist/installer/Hermes.pkg
+
       - name: Compute SHA-256 checksums
         run: |
           cd dist
@@ -138,6 +150,7 @@ jobs:
           path: |
             dist/Hermes.app.zip
             dist/installer/Hermes-*.pkg
+            dist/installer/Hermes.pkg
             dist/SHA256SUMS-macos.txt
             dist/unblock-hermes.command
 
@@ -193,10 +206,12 @@ jobs:
 
             Полное руководство: [USER_GUIDE_RU.md](https://github.com/${{ github.repository }}/blob/main/docs/USER_GUIDE_RU.md)
           files: |
-            artefacts/hermes-windows/Hermes-Setup-*.exe
+            artefacts/hermes-windows/installer/Hermes-Setup-*.exe
+            artefacts/hermes-windows/installer/Hermes-Setup.exe
             artefacts/hermes-windows/Hermes.exe
             artefacts/hermes-windows/SHA256SUMS.txt
-            artefacts/hermes-macos/Hermes-*.pkg
+            artefacts/hermes-macos/installer/Hermes-*.pkg
+            artefacts/hermes-macos/installer/Hermes.pkg
             artefacts/hermes-macos/Hermes.app.zip
             artefacts/hermes-macos/SHA256SUMS-macos.txt
             artefacts/hermes-macos/unblock-hermes.command
