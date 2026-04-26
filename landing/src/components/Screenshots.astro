@@ -1,0 +1,120 @@
+---
+// Mock dashboard preview rendered with pure HTML/CSS to avoid bundling React.
+const NAV_ITEMS = [
+  { icon: "⚡", label: "Олимп", active: true },
+  { icon: "📋", label: "Сделки" },
+  { icon: "⚙", label: "Стратегия" },
+  { icon: "🏛", label: "Брокеры" },
+  { icon: "🧪", label: "Бэктест" },
+  { icon: "✨", label: "Оптимизация" },
+  { icon: "📱", label: "На телефон" },
+  { icon: "🔔", label: "Уведомления" },
+  { icon: "📜", label: "Журнал" },
+  { icon: "ℹ", label: "О боте" },
+];
+
+const KPIS = [
+  { label: "Баланс", value: "$10 000.00" },
+  { label: "Сегодня", value: "+$320.50", color: "text-laurel" },
+  { label: "Просадка", value: "2.40%", color: "text-bronze" },
+  { label: "Win-rate", value: "87.70%", color: "text-olive" },
+];
+---
+
+<section id="screens" class="py-24 md:py-32">
+  <div class="mx-auto max-w-7xl px-6">
+    <div class="reveal max-w-2xl">
+      <p class="uppercase tracking-[0.32em] text-xs text-gold-deep">Интерфейс</p>
+      <h2 class="display mt-3 text-4xl md:text-5xl font-semibold tracking-tight">
+        Спокойствие <span class="gold-text">мрамора</span>. Точность <span class="gold-text">золота</span>.
+      </h2>
+      <p class="mt-4 font-serif text-lg text-ink/70">
+        Светлая тема в духе античности — без неоновых акцентов, режущих глаз. Hermes — это
+        инструмент, на который приятно смотреть в три часа ночи.
+      </p>
+    </div>
+
+    <div class="reveal-late mt-14 marble-card overflow-hidden shadow-marble">
+      <!-- Mock title bar -->
+      <div class="flex items-center justify-between border-b border-gold/25 bg-alabaster/80 px-4 py-2.5">
+        <div class="flex items-center gap-2">
+          <img src="/hermes-emblem.svg" width="20" height="20" alt="" />
+          <span class="font-serif font-semibold text-sm">Hermes</span>
+        </div>
+        <span class="text-[10px] uppercase tracking-[0.28em] text-ink/50 hidden sm:block">
+          Бог торговли. Ваш бот.
+        </span>
+        <div class="flex gap-1">
+          <span class="grid h-5 w-7 place-items-center rounded text-ink/40">—</span>
+          <span class="grid h-5 w-7 place-items-center rounded text-ink/40">▢</span>
+          <span class="grid h-5 w-7 place-items-center rounded text-ink/40">×</span>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-[220px_1fr]">
+        <aside class="hidden md:flex flex-col gap-1 border-r border-gold/20 bg-alabaster/40 p-4">
+          <p class="px-3 text-[9px] uppercase tracking-[0.28em] text-ink/50 mb-2">Навигация Hermes</p>
+          {NAV_ITEMS.map((item) => (
+            <div class:list={["mock-nav", item.active && "active"]}>
+              {item.icon}&nbsp;&nbsp;{item.label}
+            </div>
+          ))}
+        </aside>
+
+        <div class="p-6 md:p-8">
+          <header class="flex items-end justify-between">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.32em] text-ink/55">Олимп</p>
+              <h3 class="display mt-1 text-3xl font-semibold">
+                Добро пожаловать, <span class="gold-text">смертный</span>.
+              </h3>
+            </div>
+            <button class="gold-button rounded-xl px-4 py-2.5 text-sm font-semibold uppercase tracking-wider whitespace-nowrap">
+              ▶ Запустить
+            </button>
+          </header>
+
+          <div class="mt-6 grid gap-3 md:grid-cols-4">
+            {KPIS.map((kpi) => (
+              <div class="kpi">
+                <div class="kpi-label">{kpi.label}</div>
+                <div class:list={["kpi-val", kpi.color]}>{kpi.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div class="mt-5 marble-card-flat p-5">
+            <div class="flex items-baseline justify-between">
+              <h4 class="display text-lg font-semibold">Кривая equity</h4>
+              <span class="text-[10px] uppercase tracking-wider text-ink/55">90 дней</span>
+            </div>
+            <svg viewBox="0 0 600 140" class="mt-4 w-full h-24" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="eq-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#C9A96E" stop-opacity="0.4" />
+                  <stop offset="100%" stop-color="#C9A96E" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0 110 L40 100 L80 92 L120 96 L160 80 L200 70 L240 76 L280 60 L320 56 L360 48 L400 52 L440 38 L480 30 L520 36 L560 24 L600 18 L600 140 L0 140 Z"
+                fill="url(#eq-grad)"
+              />
+              <path
+                d="M0 110 L40 100 L80 92 L120 96 L160 80 L200 70 L240 76 L280 60 L320 56 L360 48 L400 52 L440 38 L480 30 L520 36 L560 24 L600 18"
+                fill="none"
+                stroke="#A8884F"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+
+          <p class="mt-3 text-center text-[10px] uppercase tracking-[0.24em] text-ink/40">
+            — Превью интерфейса —
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

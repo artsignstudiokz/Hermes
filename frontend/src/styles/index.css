@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Hermes — light marble theme by default. Greek-mythology aesthetic. */
+  :root {
+    --background: 42 60% 95%;        /* #FBF7EC marble */
+    --foreground: 28 16% 14%;        /* #2A2520 ink */
+    --card: 42 50% 97%;              /* #FAF6EC alabaster */
+    --card-foreground: 28 16% 14%;
+    --popover: 42 50% 97%;
+    --popover-foreground: 28 16% 14%;
+    --primary: 38 41% 61%;           /* #C9A96E classical gold */
+    --primary-foreground: 28 30% 12%;
+    --secondary: 42 36% 88%;         /* #EFE5C8 parchment */
+    --secondary-foreground: 28 18% 18%;
+    --muted: 42 30% 90%;
+    --muted-foreground: 30 10% 38%;
+    --accent: 86 24% 40%;            /* #6B7C4F olive */
+    --accent-foreground: 42 50% 97%;
+    --destructive: 4 56% 42%;        /* #A8332E wine-red */
+    --destructive-foreground: 42 50% 97%;
+    --success: 95 25% 39%;           /* olive-green */
+    --success-foreground: 42 50% 97%;
+    --warning: 30 60% 48%;           /* bronze */
+    --warning-foreground: 42 50% 97%;
+    --border: 38 25% 78%;            /* warm beige border */
+    --input: 38 25% 82%;
+    --ring: 38 41% 55%;
+    --radius: 0.875rem;
+  }
+
+  .dark {
+    /* Optional dark — deep wine + bronze (rare; light is default) */
+    --background: 28 16% 10%;
+    --foreground: 42 50% 92%;
+    --card: 28 16% 13%;
+    --card-foreground: 42 50% 92%;
+    --popover: 28 16% 13%;
+    --popover-foreground: 42 50% 92%;
+    --primary: 38 50% 62%;
+    --primary-foreground: 28 30% 10%;
+    --secondary: 28 12% 18%;
+    --secondary-foreground: 42 50% 92%;
+    --muted: 28 12% 16%;
+    --muted-foreground: 42 14% 70%;
+    --accent: 86 22% 48%;
+    --accent-foreground: 42 50% 92%;
+    --destructive: 4 60% 52%;
+    --destructive-foreground: 42 50% 92%;
+    --success: 95 30% 50%;
+    --success-foreground: 28 30% 10%;
+    --warning: 30 65% 56%;
+    --warning-foreground: 28 30% 10%;
+    --border: 28 12% 22%;
+    --input: 28 12% 22%;
+    --ring: 38 50% 60%;
+  }
+
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    background-image:
+      radial-gradient(ellipse at 0% 0%, rgba(201, 169, 110, 0.10) 0%, transparent 45%),
+      radial-gradient(ellipse at 100% 100%, rgba(123, 138, 90, 0.07) 0%, transparent 55%),
+      linear-gradient(180deg, #FBF7EC 0%, #F4ECD8 100%);
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.45); background-clip: content-box; }
+}
+
+@layer components {
+  .marble-card {
+    @apply rounded-xl border bg-card shadow-card;
+    background-image:
+      radial-gradient(circle at 0% 0%, rgba(255,255,255,0.5) 0%, transparent 35%),
+      radial-gradient(circle at 100% 100%, rgba(201,169,110,0.06) 0%, transparent 45%);
+  }
+  .gold-text {
+    background: linear-gradient(135deg, #E5CB91 0%, #C9A96E 50%, #A8884F 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .gold-button {
+    background: linear-gradient(135deg, #E5CB91 0%, #C9A96E 50%, #A8884F 100%);
+    color: #2A2520;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 8px 18px -8px rgba(168,136,79,0.55);
+  }
+  .gold-button:hover { filter: brightness(1.08); }
+  .titlebar-drag {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+  .titlebar-nodrag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+  /* Greek-key (meander) decorative border bottom */
+  .meander-border {
+    border-bottom: 1px solid hsl(var(--border));
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='14' viewBox='0 0 28 14'><path d='M0 12 L0 4 L8 4 L8 8 L4 8 L4 6 L6 6 L6 10 L2 10 L2 2 L12 2 L12 12 Z' fill='none' stroke='%23A8884F' stroke-width='0.7' opacity='0.45'/></svg>");
+    background-repeat: repeat-x;
+    background-position: bottom;
+  }
+  .number {
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    @apply font-mono;
+  }
+  .display {
+    @apply font-serif tracking-tight;
+  }
+  .form-input {
+    @apply w-full rounded-lg border border-hermes-gold/40 bg-card px-3 py-2 text-sm outline-none transition;
+    @apply focus:border-hermes-gold focus:ring-2 focus:ring-hermes-gold/30;
+  }
+}

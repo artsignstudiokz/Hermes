@@ -1,0 +1,29 @@
+# Astro / build artefacts
+dist/
+.astro/
+.vercel/
+*.log
+
+# Node
+node_modules/
+.npm/
+.yarn/
+.pnpm-store/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Release binaries are pulled by CI; never commit large installers
+public/releases/*.exe
+public/releases/*.pkg
+public/releases/*.dmg
+public/releases/*.AppImage

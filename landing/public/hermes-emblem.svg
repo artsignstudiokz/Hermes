@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Hermes caduceus: winged staff with two intertwined serpents -->
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E5CB91"/>
+      <stop offset="55%" stop-color="#C9A96E"/>
+      <stop offset="100%" stop-color="#A8884F"/>
+    </linearGradient>
+  </defs>
+  <!-- Wings (left + right) -->
+  <path d="M32 14 C 22 12, 14 14, 10 18 C 16 17, 22 17, 30 19" stroke="url(#gold)" stroke-width="2" fill="none"/>
+  <path d="M32 14 C 42 12, 50 14, 54 18 C 48 17, 42 17, 34 19" stroke="url(#gold)" stroke-width="2" fill="none"/>
+  <path d="M32 16 C 24 16, 18 17, 14 20 C 19 19, 24 19, 30 21" stroke="url(#gold)" stroke-width="1.5" fill="none" opacity="0.75"/>
+  <path d="M32 16 C 40 16, 46 17, 50 20 C 45 19, 40 19, 34 21" stroke="url(#gold)" stroke-width="1.5" fill="none" opacity="0.75"/>
+  <!-- Central staff -->
+  <line x1="32" y1="14" x2="32" y2="56" stroke="url(#gold)" stroke-width="2.4"/>
+  <!-- Top knob -->
+  <circle cx="32" cy="13" r="2.2" fill="url(#gold)"/>
+  <!-- Two serpents intertwined (figure-eight pattern down the staff) -->
+  <path d="M28 22 C 36 26, 28 30, 36 34 C 28 38, 36 42, 28 46" stroke="url(#gold)" stroke-width="2" fill="none"/>
+  <path d="M36 22 C 28 26, 36 30, 28 34 C 36 38, 28 42, 36 46" stroke="url(#gold)" stroke-width="2" fill="none"/>
+  <!-- Serpent heads -->
+  <circle cx="27.5" cy="22" r="1.6" fill="url(#gold)"/>
+  <circle cx="36.5" cy="22" r="1.6" fill="url(#gold)"/>
+</svg>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="2">
+  <title>Hermes — Trading Bot</title>
+  <organization>kz.baicore</organization>
+  <welcome file="welcome.txt" />
+  <license file="license.txt" />
+  <conclusion file="conclusion.txt" />
+
+  <options customize="never" require-scripts="false" rootVolumeOnly="true" />
+  <volume-check>
+    <allowed-os-versions>
+      <os-version min="12.0" />
+    </allowed-os-versions>
+  </volume-check>
+
+  <choices-outline>
+    <line choice="default">
+      <line choice="kz.baicore.hermes" />
+    </line>
+  </choices-outline>
+
+  <choice id="default" />
+  <choice id="kz.baicore.hermes" visible="false">
+    <pkg-ref id="kz.baicore.hermes" />
+  </choice>
+  <pkg-ref id="kz.baicore.hermes" version="1.0.0" onConclusion="none">component.pkg</pkg-ref>
+</installer-gui-script>

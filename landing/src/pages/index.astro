@@ -1,0 +1,268 @@
+---
+import Layout from "@layouts/Layout.astro";
+import Header from "@components/Header.astro";
+import Hero from "@components/Hero.astro";
+import BrokerMarquee from "@components/BrokerMarquee.astro";
+import Features from "@components/Features.astro";
+import HowItWorks from "@components/HowItWorks.astro";
+import Screenshots from "@components/Screenshots.astro";
+import Specs from "@components/Specs.astro";
+import Download from "@components/Download.astro";
+import FAQ from "@components/FAQ.astro";
+import Footer from "@components/Footer.astro";
+---
+
+<Layout>
+  <Header />
+  <main>
+    <Hero />
+    <BrokerMarquee />
+    <Features />
+    <HowItWorks />
+    <Screenshots />
+    <Specs />
+    <Download />
+    <FAQ />
+  </main>
+  <Footer />
+</Layout>
+
+<!-- ─────────── Client-side: smart download + premium motion layer ─────────── -->
+<script>
+  import { DOWNLOADS, type OSId } from "@lib/downloads";
+
+  // ─── OS detection + downloads ─────────────────────────────────────────────
+  function detectOS(): OSId {
+    const ua = navigator.userAgent;
+    const platform = (
+      // @ts-expect-error - userAgentData is experimental
+      navigator.userAgentData?.platform ?? navigator.platform ?? ""
+    ).toLowerCase();
+    if (/win/i.test(ua) || platform.includes("win")) return "windows";
+    if (/mac|darwin/i.test(ua) || platform.includes("mac")) return "macos";
+    if (/linux/i.test(ua) || platform.includes("linux")) return "linux";
+    return "windows";
+  }
+
+  function triggerDownload(url: string, os: OSId): void {
+    console.info(`[Hermes] download → ${os} → ${url}`);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function applyPrimaryDownload(os: OSId): void {
+    const dl = DOWNLOADS[os];
+    const btn = document.getElementById("primary-download") as HTMLButtonElement | null;
+    const label = document.getElementById("primary-os-label");
+    const icon = document.getElementById("primary-icon");
+    const meta = document.getElementById("primary-meta");
+    if (!btn || !label || !icon || !meta) return;
+
+    label.textContent = dl.label;
+    icon.textContent = dl.icon || "⬇";
+
+    if (dl.url) {
+      btn.onclick = () => triggerDownload(dl.url!, os);
+      meta.textContent = `${dl.ext} · ${dl.size} · Свободное распространение для частного использования`;
+    } else {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        alert("Версия для Linux в разработке. Следите за обновлениями на baicore.kz");
+      };
+      meta.textContent = "Версия для Linux пока в разработке — выберите другую систему ниже";
+    }
+  }
+
+  document.getElementById("other-os-toggle")?.addEventListener("click", () => {
+    document.getElementById("other-os-panel")?.classList.toggle("hidden");
+  });
+
+  document.querySelectorAll<HTMLAnchorElement>("[data-os]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      const os = el.getAttribute("data-os") as OSId | null;
+      if (!os) return;
+      const dl = DOWNLOADS[os];
+      if (!dl.url) {
+        e.preventDefault();
+        if (os === "linux") alert("Версия для Linux в разработке.");
+        return;
+      }
+      e.preventDefault();
+      triggerDownload(dl.url, os);
+    });
+  });
+
+  // ─── Smooth scroll with header offset ─────────────────────────────────────
+  document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) => {
+    a.addEventListener("click", (e) => {
+      const href = a.getAttribute("href");
+      if (!href || href === "#") return;
+      const target = document.querySelector(href);
+      if (!target) return;
+      e.preventDefault();
+      const y = (target as HTMLElement).getBoundingClientRect().top + window.pageYOffset - 78;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
+  });
+
+  // ─── Scroll reveal (.reveal / .reveal-late / .reveal-pop / .word-reveal / .sheen) ──
+  const reveals = document.querySelectorAll(
+    ".reveal, .reveal-late, .reveal-pop, .word-reveal, .sheen",
+  );
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in");
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.1 },
+    );
+    reveals.forEach((el) => io.observe(el));
+  } else {
+    reveals.forEach((el) => el.classList.add("in"));
+  }
+
+  // ─── Cursor spotlight (gold glow follows mouse) ───────────────────────────
+  const spotlight = document.getElementById("spotlight");
+  if (spotlight && window.matchMedia("(hover: hover)").matches) {
+    let raf = 0;
+    let mx = window.innerWidth / 2;
+    let my = window.innerHeight / 2;
+    window.addEventListener("pointermove", (e) => {
+      mx = e.clientX;
+      my = e.clientY;
+      if (!raf) {
+        raf = requestAnimationFrame(() => {
+          spotlight.style.setProperty("--mx", `${mx}px`);
+          spotlight.style.setProperty("--my", `${my}px`);
+          raf = 0;
+        });
+      }
+    });
+  } else if (spotlight) {
+    spotlight.style.opacity = "0";
+  }
+
+  // ─── Scroll progress bar + pinned download CTA ────────────────────────────
+  const progressBar = document.getElementById("scroll-progress");
+  const pinCta = document.getElementById("pin-cta");
+  let progressRaf = 0;
+
+  function updateScrollUI() {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const ratio = docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0;
+    if (progressBar) progressBar.style.width = `${ratio * 100}%`;
+
+    // Show pinned CTA after first 80% of viewport, hide near bottom (already on download).
+    if (pinCta) {
+      const showAfter = window.innerHeight * 0.8;
+      const hideNearBottom = ratio > 0.92;
+      const downloadEl = document.getElementById("download");
+      const downloadVisible = downloadEl
+        ? downloadEl.getBoundingClientRect().top < window.innerHeight * 0.7
+        : false;
+      pinCta.classList.toggle(
+        "visible",
+        scrollTop > showAfter && !hideNearBottom && !downloadVisible,
+      );
+    }
+  }
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!progressRaf) {
+        progressRaf = requestAnimationFrame(() => {
+          updateScrollUI();
+          progressRaf = 0;
+        });
+      }
+    },
+    { passive: true },
+  );
+  updateScrollUI();
+
+  // ─── 3D tilt on .tilt cards (feature grid) ────────────────────────────────
+  document.querySelectorAll<HTMLElement>(".tilt").forEach((card) => {
+    let frame = 0;
+    const onMove = (e: MouseEvent) => {
+      const rect = card.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;   // -1..1
+      const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+      if (!frame) {
+        frame = requestAnimationFrame(() => {
+          card.style.setProperty("--tilt-x", `${x * 6}deg`);
+          card.style.setProperty("--tilt-y", `${-y * 6}deg`);
+          card.style.setProperty("--gx", `${((e.clientX - rect.left) / rect.width) * 100}%`);
+          card.style.setProperty("--gy", `${((e.clientY - rect.top) / rect.height) * 100}%`);
+          frame = 0;
+        });
+      }
+    };
+    card.addEventListener("pointermove", onMove);
+    card.addEventListener("pointerleave", () => {
+      card.style.setProperty("--tilt-x", "0deg");
+      card.style.setProperty("--tilt-y", "0deg");
+    });
+  });
+
+  // ─── Magnetic CTA (button drifts toward cursor) ──────────────────────────
+  document.querySelectorAll<HTMLElement>(".magnetic").forEach((btn) => {
+    btn.addEventListener("pointermove", (e) => {
+      const rect = btn.getBoundingClientRect();
+      const x = (e.clientX - rect.left - rect.width / 2) * 0.18;
+      const y = (e.clientY - rect.top - rect.height / 2) * 0.18;
+      btn.style.transform = `translate(${x}px, ${y}px)`;
+    });
+    btn.addEventListener("pointerleave", () => {
+      btn.style.transform = "translate(0, 0)";
+    });
+  });
+
+  // ─── Count-up numbers (.counter[data-count]) ─────────────────────────────
+  function countUp(el: HTMLElement) {
+    const target = parseFloat(el.dataset.count ?? "0");
+    const decimals = parseInt(el.dataset.decimals ?? "0", 10);
+    const prefix = el.dataset.prefix ?? "";
+    const suffix = el.dataset.suffix ?? "";
+    const duration = 1400;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      const value = (target * eased).toFixed(decimals);
+      el.textContent = `${prefix}${value}${suffix}`;
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  if ("IntersectionObserver" in window) {
+    const counterIO = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            countUp(entry.target as HTMLElement);
+            counterIO.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.5 },
+    );
+    document.querySelectorAll<HTMLElement>(".counter").forEach((el) => counterIO.observe(el));
+  } else {
+    document.querySelectorAll<HTMLElement>(".counter").forEach(countUp);
+  }
+
+  // Boot.
+  applyPrimaryDownload(detectOS());
+</script>

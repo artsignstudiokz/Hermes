@@ -1,0 +1,37 @@
+---
+interface Props {
+  size?: "sm" | "md" | "lg";
+  showText?: boolean;
+  href?: string;
+}
+
+const { size = "md", showText = true, href } = Astro.props;
+
+const sizeMap = {
+  sm: { svg: 22, text: "text-base", caption: "text-[9px]" },
+  md: { svg: 32, text: "text-xl", caption: "text-[10px]" },
+  lg: { svg: 44, text: "text-3xl", caption: "text-[11px]" },
+} as const;
+
+const s = sizeMap[size];
+const Tag: "a" | "div" = href ? "a" : "div";
+---
+
+<Tag {...(href ? { href } : {})} class="flex items-center gap-3">
+  <img
+    src="/hermes-emblem.svg"
+    alt="Hermes — кадуцей"
+    width={s.svg}
+    height={s.svg}
+    class="animate-wing-flutter"
+    loading="eager"
+  />
+  {showText && (
+    <div class="leading-none">
+      <div class:list={["display font-semibold tracking-tight gold-text", s.text]}>Hermes</div>
+      <div class:list={[s.caption, "uppercase tracking-[0.28em] text-ink/55 mt-0.5"]}>
+        BAI Core · Trading
+      </div>
+    </div>
+  )}
+</Tag>

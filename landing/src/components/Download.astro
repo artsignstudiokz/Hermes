@@ -1,0 +1,82 @@
+---
+import { DOWNLOADS } from "@lib/downloads";
+
+const CARDS = [
+  {
+    os: "windows" as const,
+    title: "Windows",
+    meta: "10 / 11 · x64 · ~80 МБ",
+    cta: "Скачать .exe",
+  },
+  {
+    os: "macos" as const,
+    title: "macOS",
+    meta: "12+ · Intel & M1/M2 · ~85 МБ",
+    cta: "Скачать .pkg",
+  },
+  {
+    os: "linux" as const,
+    title: "Linux",
+    meta: "Ubuntu / Fedora / Arch",
+    cta: "Скоро",
+    soon: true,
+  },
+];
+---
+
+<section id="download" class="relative overflow-hidden py-24 md:py-32">
+  <div
+    aria-hidden="true"
+    class="absolute inset-0 -z-10"
+    style="background: radial-gradient(ellipse at 50% 50%, rgba(201,169,110,0.18) 0%, transparent 65%);"
+  ></div>
+
+  <div class="mx-auto max-w-5xl px-6 text-center">
+    <div class="reveal">
+      <img
+        src="/hermes-emblem.svg"
+        alt=""
+        width="64"
+        height="64"
+        class="mx-auto animate-wing-flutter"
+      />
+      <p class="mt-6 uppercase tracking-[0.32em] text-xs text-gold-deep">Скачать Hermes</p>
+      <h2 class="display mt-3 text-5xl md:text-6xl font-semibold tracking-tight">
+        Призовите <span class="gold-text italic">бога торговли</span>.
+      </h2>
+      <p class="mx-auto mt-5 max-w-2xl font-serif text-lg text-ink/75">
+        Бесплатная версия для частного использования. Полный функционал — без триалов и подписок.
+      </p>
+    </div>
+
+    <div class="reveal-late mt-12 grid gap-4 md:grid-cols-3 max-w-4xl mx-auto">
+      {CARDS.map((card) => {
+        const dl = DOWNLOADS[card.os];
+        const href = dl.url ?? "#";
+        return (
+          <a
+            href={href}
+            data-os={card.os}
+            class:list={["dl-card", card.soon && "dl-soon"]}
+          >
+            <div class="dl-icon" aria-hidden="true">{dl.icon}</div>
+            <div class="dl-os">{card.title}</div>
+            <div class="dl-meta">{card.meta}</div>
+            <div class="dl-cta">{card.cta}</div>
+          </a>
+        );
+      })}
+    </div>
+
+    <div class="mt-8 mx-auto max-w-2xl space-y-2 text-xs text-ink/55">
+      <p>
+        SHA-256 хеши публикуются на странице релиза — сравните перед установкой для дополнительной
+        уверенности.
+      </p>
+      <p>
+        Если ОС предупредит о неизвестном разработчике — это нормально для нового продукта.
+        Подробности в разделе <a href="#faq" class="link-sub">«Вопросы и ответы»</a>.
+      </p>
+    </div>
+  </div>
+</section>

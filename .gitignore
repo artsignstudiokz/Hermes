@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Vite
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Build artefacts
+build/
+dist/
+*.spec.bak
+*.log
+backend/app/static/
+
+# Vercel / Astro local state
+.vercel/
+.astro/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project data (must NEVER be committed — contains encrypted credentials)
+data/
+
+# Hermes imagery placeholders — track the README only, not user-added photos
+frontend/public/hermes/*.jpg
+frontend/public/hermes/*.jpeg
+frontend/public/hermes/*.png
+
+# Original Streamlit prototype — superseded by backend/, frontend/, desktop/.
+# The parts still in use (strategy core, indicators, backtester) are mirrored in legacy/.
+trading_bot/
+
+# Source images for icon generator (kept locally, not in repo)
+Инструкция.txt
+
+# Claude Code local config (per-machine)
+.claude/

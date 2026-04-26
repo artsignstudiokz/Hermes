@@ -1,0 +1,30 @@
+---
+const ITEMS = [
+  "MetaTrader 5",
+  "Binance",
+  "Bybit",
+  "OKX",
+  "Exness",
+  "RoboForex",
+  "XM",
+  "FBS",
+  "Alpari",
+  "InstaForex",
+];
+---
+
+<section class="border-y border-gold/15 bg-alabaster/40 py-10">
+  <p class="mb-6 text-center text-[10px] uppercase tracking-[0.32em] text-ink/45">
+    Поддерживаемые брокеры и биржи
+  </p>
+  <div class="marquee">
+    <div class="marquee-track">
+      {[...ITEMS, ...ITEMS].map((name, i) => (
+        <span class="marquee-item">
+          {i > 0 && <span class="marquee-dot"></span>}
+          {name}
+        </span>
+      ))}
+    </div>
+  </div>
+</section>

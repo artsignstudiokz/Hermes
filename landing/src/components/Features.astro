@@ -1,0 +1,60 @@
+---
+const FEATURES = [
+  {
+    icon: "🛡",
+    title: "Безопасность как у банка",
+    text: "Ключи бирж шифруются Argon2id + Fernet под мастер-паролем. Ничего не покидает ваш компьютер. Никаких облаков.",
+  },
+  {
+    icon: "⚖",
+    title: "Адаптивная стратегия",
+    text: "Hermes еженедельно пересчитывает параметры под текущий рынок. Walk-forward валидация защищает от переобучения.",
+  },
+  {
+    icon: "📱",
+    title: "Управляйте с телефона",
+    text: "Один QR-код — и интерфейс открывается на iPhone или Android. PIN-защита, push-уведомления, полный контроль.",
+  },
+  {
+    icon: "🌐",
+    title: "MT5 + Криптобиржи",
+    text: "MetaTrader 5 для Forex и Binance/Bybit/OKX через единый интерфейс. Переключение между счетами в один клик.",
+  },
+  {
+    icon: "🔔",
+    title: "Уведомления везде",
+    text: "Telegram, Web Push, нативные тосты Windows/macOS. Каждая сделка — на ваших экранах в момент исполнения.",
+  },
+  {
+    icon: "🧪",
+    title: "Бэктест + Оптимизация",
+    text: "Тестируйте стратегию на 5 годах истории за минуту. Optuna автоматически найдёт оптимальные параметры.",
+  },
+];
+---
+
+<section id="features" class="py-24 md:py-32">
+  <div class="mx-auto max-w-7xl px-6">
+    <div class="reveal max-w-2xl">
+      <p class="uppercase tracking-[0.32em] text-xs text-gold-deep">Что внутри</p>
+      <h2 class="display sheen mt-3 text-4xl md:text-5xl font-semibold tracking-tight">
+        Алгоритм, достойный <span class="gold-text-anim">Олимпа</span>.
+      </h2>
+      <p class="mt-4 font-serif text-lg text-ink/70">
+        Каждая деталь — от шифрования ключей до адаптации под рынок — проектировалась с одной
+        целью: вы открываете приложение и торгуете, не разбираясь в технических нюансах.
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {FEATURES.map((f) => (
+        <article class="feat tilt reveal">
+          <span class="tilt-glare"></span>
+          <div class="feat-icon">{f.icon}</div>
+          <h3 class="display text-xl font-semibold mt-4 relative z-[1]">{f.title}</h3>
+          <p class="mt-2 text-sm text-ink/70 relative z-[1]">{f.text}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>

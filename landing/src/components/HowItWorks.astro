@@ -1,0 +1,40 @@
+---
+const STEPS = [
+  {
+    num: "α",
+    title: "Скачайте и установите",
+    text: "Один файл, двойной клик, привычный wizard на русском. Никакого Python, командной строки или настройки окружения.",
+  },
+  {
+    num: "β",
+    title: "Подключите счёт",
+    text: "Hermes сам обнаружит установленный MT5 и предложит серверы вашего брокера. Для криптовалют — вставьте API-ключ.",
+  },
+  {
+    num: "γ",
+    title: "Запустите торговлю",
+    text: "Выберите пресет: Консервативный, Сбалансированный, Агрессивный — или Auto, чтобы Hermes сам подобрал параметры.",
+  },
+];
+---
+
+<section id="how" class="bg-ivory/40 py-24 md:py-32">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="reveal text-center">
+      <p class="uppercase tracking-[0.32em] text-xs text-gold-deep">Три шага до первой сделки</p>
+      <h2 class="display mt-3 text-4xl md:text-5xl font-semibold tracking-tight">
+        От установки до торговли — <span class="gold-text">2 минуты</span>.
+      </h2>
+    </div>
+
+    <div class="mt-16 grid gap-8 md:grid-cols-3">
+      {STEPS.map((step) => (
+        <div class="step reveal">
+          <div class="step-num">{step.num}</div>
+          <h3 class="display text-2xl font-semibold mt-6">{step.title}</h3>
+          <p class="mt-2 text-sm text-ink/70">{step.text}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

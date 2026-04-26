@@ -1,0 +1,35 @@
+---
+import BrandMark from "./BrandMark.astro";
+
+const NAV = [
+  { href: "#features", label: "Возможности" },
+  { href: "#how", label: "Как работает" },
+  { href: "#screens", label: "Интерфейс" },
+  { href: "#specs", label: "Брокеры" },
+  { href: "#faq", label: "Вопросы" },
+];
+---
+
+<header class="fixed inset-x-0 top-0 z-50 border-b border-gold/20 bg-marble/80 backdrop-blur-md">
+  <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <BrandMark size="md" href="#" />
+
+    <ul class="hidden items-center gap-7 text-sm md:flex">
+      {NAV.map((item) => (
+        <li><a href={item.href} class="link-sub">{item.label}</a></li>
+      ))}
+    </ul>
+
+    <div class="flex items-center gap-2">
+      <a
+        href="#download"
+        class="hidden md:inline-flex items-center gap-2 rounded-lg gold-button px-4 py-2 text-sm font-semibold uppercase tracking-wider"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4v12"/><path d="M6 12l6 6 6-6"/><path d="M4 20h16"/>
+        </svg>
+        Скачать
+      </a>
+    </div>
+  </nav>
+</header>

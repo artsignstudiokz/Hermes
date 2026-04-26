@@ -1,0 +1,68 @@
+---
+const COLUMNS = [
+  {
+    title: "Брокеры Forex",
+    items: [
+      "MetaTrader 5 — все брокеры",
+      "Exness · RoboForex · XM · FBS",
+      "Alpari · InstaForex · MetaQuotes Demo",
+      "Авто-определение серверов брокера",
+      "Демо- и реальные счета",
+    ],
+  },
+  {
+    title: "Криптобиржи",
+    items: [
+      "Binance (Spot + Futures)",
+      "Bybit (Spot + Perpetuals)",
+      "OKX",
+      "Testnet для безопасной отладки",
+      "Через API ключи без вывода средств",
+    ],
+  },
+  {
+    title: "Системы",
+    items: [
+      "Windows 10 / 11 (x64) — полная поддержка",
+      "macOS 12+ (Intel / Apple Silicon)",
+      "Linux (Ubuntu/Fedora) — скоро",
+      "iOS / Android — через мобильный доступ",
+      "~80 МБ занимаемого места",
+    ],
+  },
+];
+---
+
+<section id="specs" class="bg-ivory/40 py-24 md:py-32">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="reveal text-center">
+      <p class="uppercase tracking-[0.32em] text-xs text-gold-deep">Технические детали</p>
+      <h2 class="display mt-3 text-4xl md:text-5xl font-semibold tracking-tight">
+        Поддерживаемые <span class="gold-text">биржи и системы</span>
+      </h2>
+    </div>
+
+    <div class="mt-14 grid gap-6 lg:grid-cols-3">
+      {COLUMNS.map((col) => (
+        <div class="spec reveal">
+          <h3 class="display text-2xl font-semibold">{col.title}</h3>
+          <ul class="mt-4 space-y-2 text-sm text-ink/75">
+            {col.items.map((it) => <li>✦ {it}</li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+
+    <div class="reveal mt-12 marble-card-flat px-6 py-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-xs uppercase tracking-[0.22em] text-ink/65">
+      <span>🔒 Argon2id KDF</span>
+      <span>·</span>
+      <span>🔐 Fernet AES-128</span>
+      <span>·</span>
+      <span>📡 127.0.0.1 only</span>
+      <span>·</span>
+      <span>🛰 ngrok-туннель</span>
+      <span>·</span>
+      <span>📱 PWA + Web Push</span>
+    </div>
+  </div>
+</section>

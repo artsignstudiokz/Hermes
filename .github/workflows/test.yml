@@ -1,0 +1,62 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install backend (without MetaTrader5 — Windows-only)
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          # MetaTrader5 is sys_platform == 'win32', skipped automatically on Linux.
+          pip install -e ".[dev]" || pip install -r ../backend/requirements.txt -e .
+
+      - name: Install legacy deps (strategy core)
+        run: |
+          pip install pandas numpy scipy
+
+      - name: Run pytest
+        working-directory: backend
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: pytest -v
+
+  frontend:
+    name: Frontend (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm install
+
+      - name: Type-check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Vitest
+        working-directory: frontend
+        run: npm test
