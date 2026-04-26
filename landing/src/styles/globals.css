@@ -1,7 +1,10 @@
+/* CSS spec: @import must come before all other rules except @charset.
+   Tailwind directives are processed by PostCSS so they're fine after. */
+@import "./motion.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "./motion.css";
 
 @layer base {
   html { scroll-behavior: smooth; }
