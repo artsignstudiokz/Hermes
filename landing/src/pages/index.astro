@@ -34,10 +34,12 @@ import Footer from "@components/Footer.astro";
   // ─── OS detection + downloads ─────────────────────────────────────────────
   function detectOS(): OSId {
     const ua = navigator.userAgent;
-    const platform = (
-      // @ts-expect-error - userAgentData is experimental
-      navigator.userAgentData?.platform ?? navigator.platform ?? ""
-    ).toLowerCase();
+    // navigator.userAgentData is experimental; navigator.platform is technically
+    // deprecated but the only fallback that works in older browsers. Both are
+    // silenced together because user-agent sniffing inherently leans on these.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nav = navigator as any;
+    const platform = (nav.userAgentData?.platform ?? nav.platform ?? "").toLowerCase();
     if (/win/i.test(ua) || platform.includes("win")) return "windows";
     if (/mac|darwin/i.test(ua) || platform.includes("mac")) return "macos";
     if (/linux/i.test(ua) || platform.includes("linux")) return "linux";
@@ -66,15 +68,21 @@ import Footer from "@components/Footer.astro";
     label.textContent = dl.label;
     icon.textContent = dl.icon || "⬇";
 
-    if (dl.url) {
+    if (dl.url && !dl.pending) {
       btn.onclick = () => triggerDownload(dl.url!, os);
       meta.textContent = `${dl.ext} · ${dl.size} · Свободное распространение для частного использования`;
+    } else if (dl.url && dl.pending) {
+      // Pre-release: send the user to the Releases page so they can subscribe.
+      btn.onclick = () => {
+        window.open(dl.url!, "_blank", "noopener");
+      };
+      meta.textContent = "Релиз 1.0.0 в финальной сборке — следите за обновлениями на странице релизов";
     } else {
       btn.onclick = (e) => {
         e.preventDefault();
-        alert("Версия для Linux в разработке. Следите за обновлениями на baicore.kz");
+        alert("Эта платформа в разработке. Следите за обновлениями на baicore.kz");
       };
-      meta.textContent = "Версия для Linux пока в разработке — выберите другую систему ниже";
+      meta.textContent = "Эта платформа пока в разработке — выберите другую систему ниже";
     }
   }
 
@@ -89,11 +97,15 @@ import Footer from "@components/Footer.astro";
       const dl = DOWNLOADS[os];
       if (!dl.url) {
         e.preventDefault();
-        if (os === "linux") alert("Версия для Linux в разработке.");
+        alert("Эта платформа в разработке.");
         return;
       }
       e.preventDefault();
-      triggerDownload(dl.url, os);
+      if (dl.pending) {
+        window.open(dl.url, "_blank", "noopener");
+      } else {
+        triggerDownload(dl.url, os);
+      }
     });
   });
 
