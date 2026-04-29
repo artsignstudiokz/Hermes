@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Coins, Gauge, Pause, Play, Power, TrendingUp } from "lucide-react";
+import { Activity, ArrowUpRight, Coins, Pause, Play, Power, ShieldAlert, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { useAccount, useEquityHistory, useTradingStatus } from "@/api/useAccount";
@@ -13,15 +13,17 @@ import {
   useStopTrading,
 } from "@/api/useTrading";
 import { useStrategyConfig } from "@/api/useStrategy";
+import { useRegime } from "@/api/useAdaptive";
 import { EquityChart } from "@/components/charts/EquityChart";
 import { RegimeBadge } from "@/components/charts/RegimeBadge";
 import { PositionsTable } from "@/components/tables/PositionsTable";
 import { BalanceCard } from "@/components/widgets/BalanceCard";
 import { BotStatusBadge } from "@/components/widgets/BotStatusBadge";
 import { KillSwitch } from "@/components/widgets/KillSwitch";
+import { KpiCard } from "@/components/widgets/KpiCard";
+import { PageHeader } from "@/components/widgets/PageHeader";
 import { RiskGauge } from "@/components/widgets/RiskGauge";
 import { SignalToasts } from "@/components/widgets/SignalToast";
-import { useRegime } from "@/api/useAdaptive";
 import { formatMoney, formatPct } from "@/lib/format";
 
 export function Dashboard() {
@@ -46,6 +48,7 @@ export function Dashboard() {
 
   const stopPct = (config.data?.payload?.stop_drawdown_pct ?? 10) / 100;
   const hardPct = (config.data?.payload?.max_portfolio_drawdown_pct ?? 20) / 100;
+
   const peakEquity = (equityHistory.data ?? []).reduce(
     (m, p) => Math.max(m, p.equity),
     account.data?.equity ?? 0,
@@ -53,6 +56,8 @@ export function Dashboard() {
   const drawdown = peakEquity > 0 && account.data
     ? Math.max(0, (peakEquity - account.data.equity) / peakEquity)
     : 0;
+
+  const winRateSpark = (equityHistory.data ?? []).slice(-30).map((p) => p.equity);
 
   const onPrimary = () => {
     if (!activeBroker) return;
@@ -68,41 +73,50 @@ export function Dashboard() {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
+      transition={{ duration: 0.4 }}
       className="space-y-8"
     >
       <SignalToasts />
 
-      <header className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end">
-        <div>
-          <div className="flex items-center gap-3">
-            <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">Олимп</p>
+      <PageHeader
+        eyebrow="Олимп"
+        title={
+          activeBroker ? (
+            <>Счёт <span className="gold-text">{activeBroker.name}</span></>
+          ) : (
+            <>Подключите <span className="gold-text">брокера</span></>
+          )
+        }
+        subtitle="«Нет дома богаче того, в котором живёт Гермес — посланник прибыли.»"
+        status={
+          <div className="flex items-center gap-2">
             <BotStatusBadge />
-            {regime.data && <RegimeBadge regime={regime.data.regime} />}
+            {regime.data && (
+              <RegimeBadge
+                regime={regime.data.regime}
+                confidence={
+                  regime.data.per_pair[0]?.confidence ??
+                  Math.max(...Object.values(regime.data.counts ?? {})) /
+                    Math.max(1, regime.data.per_pair.length || 1)
+                }
+              />
+            )}
           </div>
-          <h1 className="display mt-2 text-4xl font-semibold tracking-tight">
-            {activeBroker
-              ? <>Счёт <span className="gold-text">{activeBroker.name}</span></>
-              : <>Подключите <span className="gold-text">брокера</span></>}
-          </h1>
-          <p className="mt-1 max-w-2xl font-serif italic text-muted-foreground">
-            «Нет дома богаче того, в котором живёт Гермес — посланник прибыли.»
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!activeBroker ? (
+        }
+        actions={
+          !activeBroker ? (
             <Link
               to="/brokers"
               className="gold-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-wider"
             >
-              Подключить брокера
+              Подключить брокера <ArrowUpRight size={14} />
             </Link>
           ) : (
             <>
               <button
                 onClick={onPrimary}
                 disabled={start.isPending || pause.isPending || resume.isPending}
-                className="gold-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-wider"
+                className="gold-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-wider disabled:opacity-50"
               >
                 <PrimaryIcon size={16} /> {primaryLabel}
               </button>
@@ -110,55 +124,89 @@ export function Dashboard() {
                 <button
                   onClick={() => stop.mutate()}
                   disabled={stop.isPending}
-                  className="rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment"
+                  className="rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition"
                 >
                   Остановить
                 </button>
               )}
             </>
-          )}
-        </div>
-      </header>
+          )
+        }
+      />
 
+      {/* Top section: BalanceCard (wide) + 2 KPIs */}
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <BalanceCard account={account.data} loading={account.isLoading} />
-        <Kpi
-          label="Сегодня"
-          value={formatMoney(stats.data?.pnl_total ?? 0)}
-          hint="P&L за 30 дней"
-          icon={TrendingUp}
-          tone="success"
+        <BalanceCard
+          account={account.data}
+          loading={account.isLoading}
+          history={equityHistory.data}
         />
-        <RiskGauge drawdown={drawdown} stop={stopPct} hardStop={hardPct} />
-        <Kpi
+        <KpiCard
+          label="P&L · 30 дней"
+          value={formatMoney(stats.data?.pnl_total ?? 0)}
+          hint={`${stats.data?.total ?? 0} сделок`}
+          delta={
+            stats.data && stats.data.pnl_total !== 0
+              ? {
+                  text: formatPct(stats.data.pnl_total / Math.max(1, account.data?.balance ?? 10000)),
+                  positive: stats.data.pnl_total > 0,
+                }
+              : undefined
+          }
+          icon={TrendingUp}
+          tone="laurel"
+          sparkline={winRateSpark}
+        />
+        <KpiCard
           label="Win-rate"
           value={formatPct(stats.data?.win_rate ?? 0)}
-          hint={`${stats.data?.wins ?? 0} / ${stats.data?.total ?? 0} сделок`}
-          icon={Gauge}
-          tone="olive"
+          hint={`${stats.data?.wins ?? 0} / ${stats.data?.total ?? 0}`}
+          icon={Activity}
+          tone="aegean"
         />
       </section>
 
-      {/* Per-pair regime row */}
-      {regime.data && regime.data.per_pair.length > 0 && (
-        <section className="marble-card p-4">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h3 className="display text-sm font-semibold">Состояние пар</h3>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              классификация по 4h
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {regime.data.per_pair.map((p) => (
-              <RegimeBadge key={p.symbol} regime={p.regime} symbol={p.symbol} small />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Risk + Per-pair regimes */}
+      <section className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+        <RiskGauge drawdown={drawdown} stop={stopPct} hardStop={hardPct} />
 
+        {regime.data && regime.data.per_pair.length > 0 ? (
+          <div className="marble-card p-5">
+            <div className="mb-4 flex items-baseline justify-between">
+              <h3 className="display text-base font-semibold text-hermes-navy">
+                Состояние пар <span className="text-muted-foreground font-normal text-xs">· 4h</span>
+              </h3>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {regime.data.per_pair.length} пар
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {regime.data.per_pair.map((p) => (
+                <RegimeBadge
+                  key={p.symbol}
+                  regime={p.regime}
+                  symbol={p.symbol}
+                  confidence={p.confidence}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="marble-card grid place-items-center p-5 text-center">
+            <p className="font-serif italic text-sm text-muted-foreground">
+              Регимы появятся когда Hermes увидит первые тики.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* Equity chart */}
       <section className="marble-card overflow-hidden">
         <div className="flex items-baseline justify-between border-b border-hermes-gold/20 px-6 py-4">
-          <h2 className="display text-xl font-semibold">Кривая equity</h2>
+          <div>
+            <h2 className="display text-xl font-semibold text-hermes-navy">Кривая equity</h2>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Live · WebSocket</p>
+          </div>
           <span className="text-xs uppercase tracking-wider text-muted-foreground">30 дней</span>
         </div>
         {equityHistory.data && equityHistory.data.length > 1 ? (
@@ -177,11 +225,15 @@ export function Dashboard() {
         )}
       </section>
 
+      {/* Positions + Kill switch */}
       <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="marble-card overflow-hidden">
           <div className="flex items-baseline justify-between border-b border-hermes-gold/20 px-5 py-3.5">
-            <h3 className="display text-lg font-semibold">Открытые позиции</h3>
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+            <div>
+              <h3 className="display text-lg font-semibold text-hermes-navy">Открытые позиции</h3>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Обновляется в реальном времени</p>
+            </div>
+            <span className="rounded-full bg-hermes-gold/15 px-2.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-hermes-gold-deep">
               {positions.data?.length ?? 0} активных
             </span>
           </div>
@@ -189,40 +241,22 @@ export function Dashboard() {
         </div>
         <KillSwitch />
       </section>
+
+      {/* Footer KPI strip — Sharpe, Coins, Bot uptime */}
+      <section className="marble-card flex flex-wrap items-center justify-around gap-6 px-6 py-4 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="flex items-center gap-2">
+          <Coins size={13} className="text-hermes-gold-deep" />
+          Стратегия: {config.data?.name ?? "—"}
+        </span>
+        <span className="flex items-center gap-2">
+          <ShieldAlert size={13} className="text-hermes-bronze" />
+          Stop: {(stopPct * 100).toFixed(0)}% · Max: {(hardPct * 100).toFixed(0)}%
+        </span>
+        <span className="flex items-center gap-2">
+          <Activity size={13} className="text-hermes-laurel" />
+          Тиков: <span className="number text-foreground">{status.data?.worker?.tick_count ?? 0}</span>
+        </span>
+      </section>
     </motion.div>
   );
 }
-
-function Kpi({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  icon: typeof Coins;
-  tone: "gold" | "success" | "warning" | "olive";
-}) {
-  const ring = {
-    gold: "ring-hermes-gold/40 text-hermes-gold-deep",
-    success: "ring-hermes-laurel/40 text-hermes-laurel",
-    warning: "ring-hermes-bronze/40 text-hermes-bronze",
-    olive: "ring-hermes-olive/40 text-hermes-olive",
-  }[tone];
-  return (
-    <div className="marble-card p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
-        <span className={`grid h-9 w-9 place-items-center rounded-full ring-1 ${ring} bg-card`}>
-          <Icon size={16} />
-        </span>
-      </div>
-      <div className="mt-3 number text-3xl font-semibold tracking-tight">{value}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
-    </div>
-  );
-}
-
