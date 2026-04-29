@@ -1,158 +1,102 @@
 ---
-// Hero — animated golden coin, word-by-word reveal, smart download CTA, particles, count-up.
+import ParallaxDashboard from "./ParallaxDashboard.astro";
 ---
 
-<section class="relative overflow-hidden pt-36 pb-24 md:pt-44 md:pb-32">
-  <div class="meander-stripe absolute inset-x-0 top-20 h-5 opacity-40"></div>
-  <div class="meander-stripe absolute inset-x-0 bottom-12 h-5 opacity-40 rotate-180"></div>
+<section class="relative overflow-hidden pt-32 pb-32 md:pt-40 md:pb-40">
+  <!-- Multi-layer animated mesh background -->
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-grid"></div>
+    <div class="hero-blob hero-blob-1"></div>
+    <div class="hero-blob hero-blob-2"></div>
+    <div class="hero-blob hero-blob-3"></div>
+    <div class="meander-stripe absolute inset-x-0 top-20 h-5 opacity-35"></div>
+    <div class="meander-stripe absolute inset-x-0 bottom-12 h-5 opacity-35 rotate-180"></div>
+  </div>
 
-  <div
-    aria-hidden="true"
-    class="absolute inset-0 -z-10"
-    style="background: radial-gradient(ellipse at 50% 20%, rgba(201,169,110,0.20) 0%, transparent 60%);"
-  ></div>
-
-  <div class="mx-auto max-w-7xl px-6">
-    <div class="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
-      <!-- Copy -->
-      <div>
-        <div class="reveal inline-flex items-center gap-2 rounded-full border border-gold/40 bg-alabaster px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-gold-deep">
-          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-gold"></span>
-          Версия 1.0 · Скоро релиз
-        </div>
-
-        <h1 class="display mt-6 text-5xl font-semibold leading-[0.95] tracking-tight md:text-7xl">
-          <span class="word-reveal" style="transition-delay: 0.05s">Бог</span>
-          <span class="word-reveal" style="transition-delay: 0.15s">торговли.</span>
-          <br />
-          <span class="word-reveal gold-text-anim italic" style="transition-delay: 0.35s">Ваш</span>
-          <span class="word-reveal gold-text-anim italic" style="transition-delay: 0.45s">бот.</span>
-        </h1>
-
-        <p class="reveal mt-6 max-w-xl font-serif text-xl leading-relaxed text-ink/75" style="transition-delay: 0.55s">
-          Hermes — профессиональный торговый бот, объединивший мудрость античного покровителя
-          коммерции и точность современных алгоритмов. Устанавливается одним кликом, работает
-          24/7, торгует за вас.
-        </p>
-
-        <!-- Smart download -->
-        <div class="reveal mt-10" style="transition-delay: 0.75s">
-          <div class="flex flex-wrap items-center gap-3">
-            <button
-              id="primary-download"
-              type="button"
-              class="magnetic group inline-flex items-center gap-3 rounded-2xl gold-button px-6 py-4 text-base font-semibold uppercase tracking-wider shadow-gold"
-            >
-              <span id="primary-icon" aria-hidden="true">⬇</span>
-              <span>Скачать <span id="primary-os-label">для вашей системы</span></span>
-            </button>
-
-            <button
-              id="other-os-toggle"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-2xl border border-gold/40 bg-alabaster px-5 py-4 text-sm font-medium text-ink/80 hover:bg-parchment transition"
-            >
-              Другие системы
-              <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">
-                <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.08l3.71-3.85a.75.75 0 111.08 1.04l-4.25 4.4a.75.75 0 01-1.08 0l-4.25-4.4a.75.75 0 01.02-1.06z"/>
-              </svg>
-            </button>
-          </div>
-
-          <div id="other-os-panel" class="hidden mt-3 inline-flex flex-wrap gap-2">
-            <a href="#" data-os="windows" class="os-pill"><span class="os-icon">⊞</span> Windows · .exe</a>
-            <a href="#" data-os="macos" class="os-pill"><span class="os-icon"></span> macOS · .pkg</a>
-            <a href="#" data-os="linux" class="os-pill"><span class="os-icon">🐧</span> Linux · .AppImage <span class="os-soon">скоро</span></a>
-          </div>
-
-          <p id="primary-meta" class="mt-3 text-xs text-ink/60">
-            ~80 МБ · Свободное распространение для частного использования
-          </p>
-        </div>
-
-        <div class="reveal mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-xs uppercase tracking-[0.22em] text-ink/55" style="transition-delay: 0.95s">
-          <span class="flex items-center gap-2"><span class="text-gold-deep">✓</span> MetaTrader 5</span>
-          <span class="flex items-center gap-2"><span class="text-gold-deep">✓</span> Binance · Bybit · OKX</span>
-          <span class="flex items-center gap-2"><span class="text-gold-deep">✓</span> Шифрование Argon2id</span>
-          <span class="flex items-center gap-2"><span class="text-gold-deep">✓</span> Доступ с телефона</span>
-        </div>
+  <div class="relative z-10 mx-auto max-w-7xl px-6">
+    <!-- Headline block (centered above the dashboard) -->
+    <div class="text-center">
+      <!-- Live status pill with double-ripple -->
+      <div class="reveal inline-flex items-center gap-2.5 rounded-full border border-gold/40 bg-alabaster/85 px-4 py-1.5 text-[11px] uppercase tracking-[0.28em] text-gold-deep backdrop-blur-md shadow-sm">
+        <span class="ping-double relative inline-flex h-1.5 w-1.5">
+          <span class="absolute inset-0 rounded-full bg-laurel opacity-70 animate-ping"></span>
+          <span class="absolute inset-0 rounded-full bg-laurel/50 ping-ripple-2"></span>
+          <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-laurel"></span>
+        </span>
+        Версия 1.0 · Скоро релиз
       </div>
 
-      <!-- Animated emblem -->
-      <div class="relative reveal-late">
-        <div class="emblem-stage relative mx-auto aspect-square w-full max-w-md">
-          <!-- Floating particles -->
-          <div class="particles">
-            <span class="particle" style="left: 15%; animation-delay: 0s;  --drift: 8px;"></span>
-            <span class="particle" style="left: 30%; animation-delay: 1s;  --drift: -10px;"></span>
-            <span class="particle" style="left: 48%; animation-delay: 2s;  --drift: 14px;"></span>
-            <span class="particle" style="left: 62%; animation-delay: 0.5s; --drift: -8px;"></span>
-            <span class="particle" style="left: 75%; animation-delay: 3s;  --drift: 12px;"></span>
-            <span class="particle" style="left: 88%; animation-delay: 1.5s; --drift: -6px;"></span>
-          </div>
+      <h1 class="display mt-7 text-5xl md:text-7xl lg:text-[80px] font-semibold leading-[0.95] tracking-tight max-w-4xl mx-auto">
+        <span class="word-reveal" style="transition-delay: 0.05s">Бог</span>
+        <span class="word-reveal" style="transition-delay: 0.15s">торговли.</span>
+        <br />
+        <span class="word-reveal headline-accent gold-text-anim italic" style="transition-delay: 0.35s">Ваш</span>
+        <span class="word-reveal headline-accent gold-text-anim italic" style="transition-delay: 0.45s">бот.</span>
+        <span class="headline-underline" aria-hidden="true"></span>
+      </h1>
 
-          <div class="ring ring-1"></div>
-          <div class="ring ring-2"></div>
-          <div class="ring ring-3"></div>
+      <p class="reveal mt-7 mx-auto max-w-2xl font-serif text-lg md:text-xl leading-relaxed text-ink/70" style="transition-delay: 0.55s">
+        Профессиональный трейдинг-бот, объединивший мудрость античного покровителя коммерции
+        и точность современных алгоритмов. Один клик — и Hermes торгует за вас 24/7.
+      </p>
 
-          <div class="coin-wrap absolute inset-0 grid place-items-center">
-            <div class="coin">
-              <!-- Inline animated caduceus that draws itself on load -->
-              <svg
-                viewBox="0 0 64 64"
-                class="coin-face draw"
-                fill="none"
-                stroke="#3a2e1c"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-label="Caduceus — emblem of Hermes"
-              >
-                <!-- Wings -->
-                <path d="M32 14 C 22 12, 14 14, 10 18 C 16 17, 22 17, 30 19" />
-                <path d="M32 14 C 42 12, 50 14, 54 18 C 48 17, 42 17, 34 19" />
-                <path d="M32 16 C 24 16, 18 17, 14 20 C 19 19, 24 19, 30 21" stroke-opacity="0.8" />
-                <path d="M32 16 C 40 16, 46 17, 50 20 C 45 19, 40 19, 34 21" stroke-opacity="0.8" />
-                <!-- Staff -->
-                <line x1="32" y1="14" x2="32" y2="56" stroke-width="2.6" />
-                <!-- Top knob -->
-                <circle cx="32" cy="13" r="2.2" fill="#3a2e1c" stroke="none" />
-                <!-- Serpents -->
-                <path d="M28 22 C 36 26, 28 30, 36 34 C 28 38, 36 42, 28 46" />
-                <path d="M36 22 C 28 26, 36 30, 28 34 C 36 38, 28 42, 36 46" />
-                <!-- Serpent heads -->
-                <circle cx="27.5" cy="22" r="1.6" fill="#3a2e1c" stroke="none" />
-                <circle cx="36.5" cy="22" r="1.6" fill="#3a2e1c" stroke="none" />
-              </svg>
-            </div>
-          </div>
-
-          <div class="glyph glyph-up">Ἑρμῆς</div>
-          <div class="glyph glyph-mid">☤</div>
-          <div class="glyph glyph-down">α · β · γ</div>
-        </div>
-
-        <!-- Stats card with count-up -->
-        <div class="absolute -bottom-6 left-1/2 w-[88%] -translate-x-1/2 marble-card-flat px-5 py-4 reveal-pop">
-          <div class="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div class="counter number text-2xl font-semibold gold-text" data-count="239" data-prefix="+" data-suffix="%" data-decimals="0">+0%</div>
-              <div class="text-[10px] uppercase tracking-wider text-ink/55">за 2 года</div>
-            </div>
-            <div class="border-x border-gold/20">
-              <div class="counter number text-2xl font-semibold text-laurel" data-count="87.7" data-suffix="%" data-decimals="1">0%</div>
-              <div class="text-[10px] uppercase tracking-wider text-ink/55">win-rate</div>
-            </div>
-            <div>
-              <div class="counter number text-2xl font-semibold text-aegean" data-count="2.76" data-decimals="2">0</div>
-              <div class="text-[10px] uppercase tracking-wider text-ink/55">Sharpe</div>
-            </div>
-          </div>
-          <p class="mt-2 text-center text-[10px] uppercase tracking-[0.22em] text-ink/40">
-            Бэктест · Июнь 2024 — Март 2026
-          </p>
-        </div>
+      <!-- CTA cluster -->
+      <div class="reveal mt-10 flex flex-col sm:flex-row items-center justify-center gap-3" style="transition-delay: 0.75s">
+        <button
+          id="primary-download"
+          type="button"
+          class="magnetic gold-button-morph group inline-flex items-center gap-2.5 rounded-2xl px-7 py-4 text-sm font-bold uppercase tracking-[0.16em] shadow-gold"
+        >
+          <span id="primary-icon" aria-hidden="true">⬇</span>
+          <span>Скачать <span id="primary-os-label">для вашей системы</span></span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-x-0.5"><path d="M5 12h14"/><path d="m13 5 7 7-7 7"/></svg>
+        </button>
+        <button
+          id="other-os-toggle"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl border border-gold/40 bg-alabaster/70 backdrop-blur-md px-5 py-4 text-sm font-medium text-ink/80 hover:bg-parchment/80 hover:border-gold/60 transition"
+        >
+          Другие системы
+          <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">
+            <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.08l3.71-3.85a.75.75 0 111.08 1.04l-4.25 4.4a.75.75 0 01-1.08 0l-4.25-4.4a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
       </div>
+
+      <div id="other-os-panel" class="hidden mt-3 inline-flex flex-wrap gap-2 justify-center">
+        <a href="#" data-os="windows" class="os-pill"><span class="os-icon">⊞</span> Windows · .exe</a>
+        <a href="#" data-os="macos" class="os-pill"><span class="os-icon"></span> macOS · .pkg</a>
+        <a href="#" data-os="linux" class="os-pill"><span class="os-icon">🐧</span> Linux · .AppImage <span class="os-soon">скоро</span></a>
+      </div>
+
+      <p id="primary-meta" class="reveal mt-4 text-xs text-ink/55" style="transition-delay: 0.85s">
+        ~80 МБ · Свободное распространение для частного использования
+      </p>
+
+      <!-- Trust line -->
+      <div class="reveal mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-xs uppercase tracking-[0.24em] text-ink/50" style="transition-delay: 0.95s">
+        <span class="trust-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#A8884F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          MetaTrader 5
+        </span>
+        <span class="trust-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#A8884F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          Binance · Bybit · OKX
+        </span>
+        <span class="trust-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#A8884F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 1 1 8 0v4"/></svg>
+          Argon2id шифрование
+        </span>
+        <span class="trust-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#A8884F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+          Мобильный доступ
+        </span>
+      </div>
+    </div>
+
+    <!-- Parallax 3D Dashboard centerpiece -->
+    <div class="reveal-late mt-20 lg:mt-24">
+      <ParallaxDashboard />
     </div>
   </div>
 </section>
