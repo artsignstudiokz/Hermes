@@ -1,0 +1,131 @@
+---
+/**
+ * Comparison table — Hermes vs the typical bot landscape.
+ * Subtle, honest framing: just facts, no aggressive marketing.
+ */
+
+const ROWS = [
+  { feature: "Десктоп-приложение (свой процесс, не браузер)", hermes: true,  others: false, common: false },
+  { feature: "Шифрование ключей Argon2id + Fernet",          hermes: true,  others: false, common: "иногда" },
+  { feature: "Адаптивная walk-forward калибровка",            hermes: true,  others: false, common: false },
+  { feature: "Champion-challenger защита от переобучения",    hermes: true,  others: false, common: false },
+  { feature: "MT5 + Binance/Bybit/OKX в одном UI",            hermes: true,  others: "MT5",  common: "одна биржа" },
+  { feature: "Мобильный доступ через QR + PIN",               hermes: true,  others: false, common: false },
+  { feature: "Локальное хранение (без облака)",               hermes: true,  others: false, common: false },
+  { feature: "Open source ядро (audit-friendly)",             hermes: true,  others: false, common: "иногда" },
+  { feature: "Подписка / комиссия за использование",          hermes: false, others: true,  common: true  },
+  { feature: "Доступ к стратегии заблокирован",                hermes: false, others: true,  common: true  },
+];
+
+function cell(value: boolean | string) {
+  if (value === true) return { mark: "✓", color: "good" };
+  if (value === false) return { mark: "—", color: "bad" };
+  return { mark: String(value), color: "partial" };
+}
+---
+
+<section id="comparison" class="bg-ivory/30 py-28 md:py-36">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="reveal text-center max-w-3xl mx-auto">
+      <p class="uppercase tracking-[0.32em] text-xs text-gold-deep">Сравнение</p>
+      <h2 class="display mt-3 text-4xl md:text-6xl font-semibold tracking-tight">
+        Что отличает <span class="gold-text-anim">Hermes</span>
+      </h2>
+      <p class="mt-5 font-serif text-lg text-ink/70">
+        Не эскизный обзор, а честный разрез. Можем — пишем «✓», не можем — «—»,
+        делаем частично — пишем как именно.
+      </p>
+    </div>
+
+    <div class="reveal-late mt-14 marble-card overflow-x-auto">
+      <table class="comparison-table w-full text-left">
+        <thead>
+          <tr>
+            <th class="comparison-th-feature">Что важно</th>
+            <th class="comparison-th-hermes">
+              <div class="flex items-center justify-center gap-2">
+                <img src="/hermes-favicon.png" alt="" width="22" height="22" />
+                <span class="display text-lg">Hermes</span>
+              </div>
+            </th>
+            <th class="comparison-th-other">
+              <span class="text-sm">Типичный коммерческий бот</span>
+            </th>
+            <th class="comparison-th-other">
+              <span class="text-sm">Open-source бот</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {ROWS.map((row) => {
+            const h = cell(row.hermes);
+            const o = cell(row.others);
+            const c = cell(row.common);
+            return (
+              <tr>
+                <td class="comparison-td-feature">{row.feature}</td>
+                <td class={`comparison-td comparison-${h.color}`}>{h.mark}</td>
+                <td class={`comparison-td comparison-${o.color}`}>{o.mark}</td>
+                <td class={`comparison-td comparison-${c.color}`}>{c.mark}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="mt-6 text-center text-xs text-ink/50">
+      Ничего против существующих ботов — у каждого своя ниша. Просто Hermes сделан с другими приоритетами.
+    </p>
+  </div>
+</section>
+
+<style>
+  .comparison-table { border-collapse: separate; border-spacing: 0; }
+  .comparison-table th, .comparison-table td {
+    padding: 0.95rem 1.1rem;
+    border-bottom: 1px solid rgba(201, 169, 110, 0.18);
+  }
+  .comparison-table th {
+    font-weight: 500;
+    font-size: 0.82rem;
+    color: rgba(42, 37, 32, 0.65);
+    background: rgba(244, 236, 216, 0.55);
+    text-align: center;
+  }
+  .comparison-th-feature { text-align: left !important; }
+  .comparison-th-hermes {
+    background: linear-gradient(180deg, rgba(229, 203, 145, 0.4), rgba(201, 169, 110, 0.15));
+    border-bottom: 2px solid rgba(168, 136, 79, 0.6);
+    color: #1B2940;
+  }
+  .comparison-td-feature {
+    font-weight: 500;
+    color: #2A2520;
+    font-size: 0.9rem;
+  }
+  .comparison-td {
+    text-align: center;
+    font-weight: 700;
+    font-size: 1rem;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .comparison-good {
+    color: #5B7B4A;
+    background: rgba(126, 139, 90, 0.08);
+  }
+  .comparison-bad {
+    color: rgba(122, 27, 39, 0.5);
+  }
+  .comparison-partial {
+    color: #8B6F3E;
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+  .comparison-table tr:last-child td { border-bottom: none; }
+  .comparison-table tr:hover td { background: rgba(244, 236, 216, 0.3); }
+  .comparison-table tr:hover td.comparison-th-hermes,
+  .comparison-table tr:hover .comparison-good {
+    background: rgba(126, 139, 90, 0.16);
+  }
+</style>

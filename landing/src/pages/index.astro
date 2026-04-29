@@ -5,8 +5,9 @@ import Hero from "@components/Hero.astro";
 import BrokerMarquee from "@components/BrokerMarquee.astro";
 import Features from "@components/Features.astro";
 import HowItWorks from "@components/HowItWorks.astro";
-import Screenshots from "@components/Screenshots.astro";
+import AdaptiveEngine from "@components/AdaptiveEngine.astro";
 import Specs from "@components/Specs.astro";
+import Comparison from "@components/Comparison.astro";
 import Download from "@components/Download.astro";
 import FAQ from "@components/FAQ.astro";
 import Footer from "@components/Footer.astro";
@@ -19,8 +20,9 @@ import Footer from "@components/Footer.astro";
     <BrokerMarquee />
     <Features />
     <HowItWorks />
-    <Screenshots />
+    <AdaptiveEngine />
     <Specs />
+    <Comparison />
     <Download />
     <FAQ />
   </main>
@@ -31,12 +33,8 @@ import Footer from "@components/Footer.astro";
 <script>
   import { DOWNLOADS, type OSId } from "@lib/downloads";
 
-  // ─── OS detection + downloads ─────────────────────────────────────────────
   function detectOS(): OSId {
     const ua = navigator.userAgent;
-    // navigator.userAgentData is experimental; navigator.platform is technically
-    // deprecated but the only fallback that works in older browsers. Both are
-    // silenced together because user-agent sniffing inherently leans on these.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nav = navigator as any;
     const platform = (nav.userAgentData?.platform ?? nav.platform ?? "").toLowerCase();
@@ -72,7 +70,6 @@ import Footer from "@components/Footer.astro";
       btn.onclick = () => triggerDownload(dl.url!, os);
       meta.textContent = `${dl.ext} · ${dl.size} · Свободное распространение для частного использования`;
     } else if (dl.url && dl.pending) {
-      // Pre-release: send the user to the Releases page so they can subscribe.
       btn.onclick = () => {
         window.open(dl.url!, "_blank", "noopener");
       };
@@ -109,7 +106,6 @@ import Footer from "@components/Footer.astro";
     });
   });
 
-  // ─── Smooth scroll with header offset ─────────────────────────────────────
   document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) => {
     a.addEventListener("click", (e) => {
       const href = a.getAttribute("href");
@@ -122,7 +118,7 @@ import Footer from "@components/Footer.astro";
     });
   });
 
-  // ─── Scroll reveal (.reveal / .reveal-late / .reveal-pop / .word-reveal / .sheen) ──
+  // ─── Scroll reveal ────────────────────────────────────────────────────────
   const reveals = document.querySelectorAll(
     ".reveal, .reveal-late, .reveal-pop, .word-reveal, .sheen",
   );
@@ -143,7 +139,7 @@ import Footer from "@components/Footer.astro";
     reveals.forEach((el) => el.classList.add("in"));
   }
 
-  // ─── Cursor spotlight (gold glow follows mouse) ───────────────────────────
+  // ─── Cursor spotlight ─────────────────────────────────────────────────────
   const spotlight = document.getElementById("spotlight");
   if (spotlight && window.matchMedia("(hover: hover)").matches) {
     let raf = 0;
@@ -164,18 +160,15 @@ import Footer from "@components/Footer.astro";
     spotlight.style.opacity = "0";
   }
 
-  // ─── Scroll progress bar + pinned download CTA ────────────────────────────
+  // ─── Scroll progress + pinned CTA ────────────────────────────────────────
   const progressBar = document.getElementById("scroll-progress");
   const pinCta = document.getElementById("pin-cta");
   let progressRaf = 0;
-
   function updateScrollUI() {
     const scrollTop = window.scrollY;
     const docHeight = document.documentElement.scrollHeight - window.innerHeight;
     const ratio = docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0;
     if (progressBar) progressBar.style.width = `${ratio * 100}%`;
-
-    // Show pinned CTA after first 80% of viewport, hide near bottom (already on download).
     if (pinCta) {
       const showAfter = window.innerHeight * 0.8;
       const hideNearBottom = ratio > 0.92;
@@ -203,12 +196,12 @@ import Footer from "@components/Footer.astro";
   );
   updateScrollUI();
 
-  // ─── 3D tilt on .tilt cards (feature grid) ────────────────────────────────
+  // ─── 3D tilt on feature cards ────────────────────────────────────────────
   document.querySelectorAll<HTMLElement>(".tilt").forEach((card) => {
     let frame = 0;
     const onMove = (e: MouseEvent) => {
       const rect = card.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;   // -1..1
+      const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
       const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
       if (!frame) {
         frame = requestAnimationFrame(() => {
@@ -227,12 +220,12 @@ import Footer from "@components/Footer.astro";
     });
   });
 
-  // ─── Magnetic CTA (button drifts toward cursor) ──────────────────────────
+  // ─── Magnetic CTA ────────────────────────────────────────────────────────
   document.querySelectorAll<HTMLElement>(".magnetic").forEach((btn) => {
     btn.addEventListener("pointermove", (e) => {
       const rect = btn.getBoundingClientRect();
-      const x = (e.clientX - rect.left - rect.width / 2) * 0.18;
-      const y = (e.clientY - rect.top - rect.height / 2) * 0.18;
+      const x = (e.clientX - rect.left - rect.width / 2) * 0.15;
+      const y = (e.clientY - rect.top - rect.height / 2) * 0.15;
       btn.style.transform = `translate(${x}px, ${y}px)`;
     });
     btn.addEventListener("pointerleave", () => {
@@ -240,17 +233,16 @@ import Footer from "@components/Footer.astro";
     });
   });
 
-  // ─── Count-up numbers (.counter[data-count]) ─────────────────────────────
+  // ─── Count-up numbers ────────────────────────────────────────────────────
   function countUp(el: HTMLElement) {
     const target = parseFloat(el.dataset.count ?? "0");
     const decimals = parseInt(el.dataset.decimals ?? "0", 10);
     const prefix = el.dataset.prefix ?? "";
     const suffix = el.dataset.suffix ?? "";
-    const duration = 1400;
+    const duration = 1600;
     const start = performance.now();
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
-      // Ease-out cubic
       const eased = 1 - Math.pow(1 - t, 3);
       const value = (target * eased).toFixed(decimals);
       el.textContent = `${prefix}${value}${suffix}`;
@@ -275,6 +267,5 @@ import Footer from "@components/Footer.astro";
     document.querySelectorAll<HTMLElement>(".counter").forEach(countUp);
   }
 
-  // Boot.
   applyPrimaryDownload(detectOS());
 </script>

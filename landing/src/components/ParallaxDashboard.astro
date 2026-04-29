@@ -1,0 +1,218 @@
+---
+/**
+ * Premium 3D parallax dashboard mock — the hero centerpiece.
+ *
+ * Mouse-tracking 3D tilt (rotateX/rotateY based on cursor position),
+ * multiple floating elements at different Z depths, live-look bar chart
+ * with staggered reveal, live ping indicators. Greek aesthetic preserved
+ * — marble surface, gold accents, navy contrast.
+ */
+
+const KPIS = [
+  { label: "Баланс", value: "$10 240", delta: "+2.40%", tone: "gold" },
+  { label: "Сегодня", value: "+$320", delta: "Авто", tone: "olive" },
+  { label: "Win-rate", value: "87.7%", delta: "30д", tone: "laurel" },
+  { label: "Sharpe", value: "2.76", delta: "Calmar 3.1", tone: "aegean" },
+];
+
+const POSITIONS = [
+  { sym: "EURUSD", side: "long", lots: "0.04", pnl: "+$18.40", color: "laurel" },
+  { sym: "GBPUSD", side: "short", lots: "0.03", pnl: "-$4.20", color: "wine" },
+  { sym: "USDJPY", side: "long", lots: "0.02", pnl: "+$32.60", color: "laurel" },
+];
+
+// Bar heights for the equity chart — irregular for realism.
+const BARS = [42, 58, 51, 67, 60, 74, 82, 78, 88, 84, 92, 95];
+---
+
+<div class="parallax-stage relative mx-auto w-full max-w-[1100px]" id="parallax-stage">
+  <!-- Aurora glow behind the dashboard -->
+  <div
+    aria-hidden="true"
+    class="absolute -inset-x-32 -inset-y-24 -z-10"
+    style="background: radial-gradient(60% 70% at 50% 40%, rgba(229,203,145,0.45) 0%, rgba(123,138,90,0.18) 35%, transparent 75%); filter: blur(40px);"
+  ></div>
+
+  <!-- 3D tilt wrapper -->
+  <div class="parallax-tilt relative" id="parallax-tilt">
+    <!-- Window -->
+    <div
+      class="parallax-window relative rounded-3xl border border-gold/30 bg-marble shadow-marble overflow-hidden"
+      style="background-image: linear-gradient(180deg, rgba(255,255,255,0.65), rgba(244,236,216,0.95));"
+    >
+      <!-- Window chrome -->
+      <div class="flex items-center justify-between border-b border-gold/15 bg-alabaster/70 px-5 py-3">
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full bg-[#F0524E]/70"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-[#E5CB91]/80"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-[#7E8B5A]/80"></span>
+          <span class="ml-3 text-[11px] font-mono uppercase tracking-[0.22em] text-ink/40">
+            Hermes · localhost
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="ping-dot relative flex h-1.5 w-1.5">
+            <span class="absolute inset-0 rounded-full bg-laurel opacity-70 animate-ping"></span>
+            <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-laurel"></span>
+          </span>
+          <span class="text-[10px] font-mono uppercase tracking-[0.22em] text-laurel">live</span>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="grid gap-0 md:grid-cols-[180px_1fr]">
+        <!-- Sidebar -->
+        <aside class="hidden md:block border-r border-gold/15 bg-alabaster/40 p-4 space-y-1">
+          <p class="px-2 text-[9px] uppercase tracking-[0.28em] text-ink/45 mb-2">Меню</p>
+          <div class="mock-side mock-side-active">⚡ Олимп</div>
+          <div class="mock-side">📋 Сделки</div>
+          <div class="mock-side">⚙ Стратегия</div>
+          <div class="mock-side">🏛 Брокеры</div>
+          <div class="mock-side">🧪 Бэктест</div>
+          <div class="mock-side">✨ Auto-tune</div>
+          <div class="mock-side">📱 На телефон</div>
+          <div class="mock-side">🔔 Уведомления</div>
+          <div class="mt-6 px-2 text-[9px] uppercase tracking-[0.24em] text-ink/35">
+            Разработано
+          </div>
+          <a class="block px-2 mt-1 font-serif text-sm text-gold-deep">BAI Core</a>
+        </aside>
+
+        <!-- Main -->
+        <div class="p-5 md:p-6 space-y-4">
+          <!-- Header row -->
+          <header class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.32em] text-ink/55">Олимп</p>
+              <h3 class="display mt-1 text-xl md:text-2xl font-semibold">
+                Добро пожаловать, <span class="gold-text">смертный</span>
+              </h3>
+            </div>
+            <button class="gold-button-morph rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] whitespace-nowrap">
+              ▶ Запустить
+            </button>
+          </header>
+
+          <!-- KPI grid -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+            {KPIS.map((k) => (
+              <div class={`mock-kpi mock-kpi-${k.tone}`}>
+                <div class="flex items-center justify-between">
+                  <span class="mock-kpi-label">{k.label}</span>
+                  <span class={`mock-kpi-delta mock-kpi-delta-${k.tone}`}>{k.delta}</span>
+                </div>
+                <div class="mock-kpi-val number">{k.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <!-- Equity chart -->
+          <div class="mock-chart">
+            <div class="flex items-baseline justify-between mb-3">
+              <div>
+                <p class="text-[10px] uppercase tracking-wider text-ink/50">Кривая equity</p>
+                <p class="text-sm font-serif font-semibold">90 дней · +24.0%</p>
+              </div>
+              <div class="flex gap-1">
+                {["1D", "1W", "1M", "ALL"].map((p, i) => (
+                  <span class={`mock-tf-pill ${i === 2 ? "mock-tf-pill-active" : ""}`}>{p}</span>
+                ))}
+              </div>
+            </div>
+            <div class="mock-bars">
+              {BARS.map((h, i) => (
+                <div
+                  class="mock-bar"
+                  style={`--bar-h: ${h}%; --bar-delay: ${i * 60}ms`}
+                ></div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Open positions -->
+          <div class="mock-positions">
+            <div class="flex items-baseline justify-between mb-2">
+              <p class="text-[10px] uppercase tracking-wider text-ink/50">Открытые позиции</p>
+              <span class="text-[10px] uppercase tracking-wider text-ink/40">3 активных</span>
+            </div>
+            <div class="space-y-1.5">
+              {POSITIONS.map((p) => (
+                <div class="mock-pos">
+                  <span class={`mock-pos-side mock-pos-side-${p.side}`}>
+                    {p.side === "long" ? "▲ LONG" : "▼ SHORT"}
+                  </span>
+                  <span class="mock-pos-sym">{p.sym}</span>
+                  <span class="mock-pos-lots number">{p.lots} лот</span>
+                  <span class={`mock-pos-pnl number text-${p.color}`}>{p.pnl}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating depth badges (pop out via TranslateZ) -->
+    <div class="float-badge float-badge-tl">
+      <div class="float-badge-icon" style="background: linear-gradient(135deg, #7E8B5A, #6B7C4F);">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v6h-6"/></svg>
+      </div>
+      <div>
+        <p class="float-badge-label">Win-rate</p>
+        <p class="float-badge-value number">87.7%</p>
+      </div>
+    </div>
+
+    <div class="float-badge float-badge-br">
+      <div class="float-badge-icon" style="background: linear-gradient(135deg, #C9A96E, #A8884F);">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
+      </div>
+      <div>
+        <p class="float-badge-label">Auto-mode</p>
+        <p class="float-badge-value">Тренд · стабильно</p>
+      </div>
+    </div>
+
+    <div class="float-badge float-badge-tr">
+      <div class="float-badge-icon" style="background: linear-gradient(135deg, #2E4F6F, #1B2940);">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      </div>
+      <div>
+        <p class="float-badge-label">Argon2id</p>
+        <p class="float-badge-value">шифрование</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reflection -->
+  <div
+    aria-hidden="true"
+    class="pointer-events-none mx-auto mt-2 h-32 max-w-[88%] opacity-50"
+    style="background: linear-gradient(180deg, rgba(201,169,110,0.15) 0%, transparent 100%); transform: scaleY(-1); mask-image: linear-gradient(180deg, rgba(0,0,0,0.5), transparent); -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.5), transparent);"
+  ></div>
+</div>
+
+<script>
+  // 3D parallax — tilt the dashboard based on cursor position.
+  const stage = document.getElementById("parallax-stage");
+  const tilt = document.getElementById("parallax-tilt");
+  if (stage && tilt && window.matchMedia("(hover: hover)").matches) {
+    let frame = 0;
+    const onMove = (e: PointerEvent) => {
+      const rect = stage.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        tilt.style.setProperty("--rx", `${-y * 5}deg`);
+        tilt.style.setProperty("--ry", `${x * 7}deg`);
+      });
+    };
+    const onLeave = () => {
+      tilt.style.setProperty("--rx", "0deg");
+      tilt.style.setProperty("--ry", "0deg");
+    };
+    stage.addEventListener("pointermove", onMove);
+    stage.addEventListener("pointerleave", onLeave);
+  }
+</script>

@@ -1,6 +1,7 @@
 /* CSS spec: @import must come before all other rules except @charset.
    Tailwind directives are processed by PostCSS so they're fine after. */
 @import "./motion.css";
+@import "./dashboard.css";
 
 @tailwind base;
 @tailwind components;
