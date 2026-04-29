@@ -41,7 +41,7 @@ export function Backtest() {
     if (!config.data) return;
     setProgress(null);
     const { run_id } = await start.mutateAsync({
-      params: config.data.payload,
+      params: config.data.payload as unknown as Record<string, unknown>,
       symbols: config.data.payload.symbols,
       days,
     });

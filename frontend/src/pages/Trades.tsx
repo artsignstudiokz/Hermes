@@ -25,7 +25,7 @@ export function Trades() {
     ];
     const csv = [
       head.join(","),
-      ...rows.map((t) => head.map((k) => JSON.stringify((t as Record<string, unknown>)[k] ?? "")).join(",")),
+      ...rows.map((t) => head.map((k) => JSON.stringify((t as unknown as Record<string, unknown>)[k] ?? "")).join(",")),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);

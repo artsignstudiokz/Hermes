@@ -67,7 +67,7 @@ export function Optimize() {
   const onRun = async () => {
     if (!config.data) return;
     const { run_id } = await start.mutateAsync({
-      base_params: config.data.payload,
+      base_params: config.data.payload as unknown as Record<string, unknown>,
       symbols: config.data.payload.symbols,
       n_trials: n,
       days,

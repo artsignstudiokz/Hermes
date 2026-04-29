@@ -17,13 +17,6 @@ export interface SerializedSub {
   auth: string;
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
 export async function ensurePermission(): Promise<NotificationPermission> {
   if (!("Notification" in window)) return "denied";
   if (Notification.permission === "granted") return "granted";
@@ -39,22 +32,41 @@ export async function subscribeForPush(vapidPublicKey: string): Promise<Serializ
   const existing = await reg.pushManager.getSubscription();
   if (existing) return serialize(existing);
 
+  // applicationServerKey expects BufferSource. TS 5.7 narrows Uint8Array's
+  // ArrayBufferLike — use the underlying buffer slice as ArrayBuffer.
+  const keyBytes = urlBase64ToUint8Array(vapidPublicKey);
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+    applicationServerKey: keyBytes.buffer.slice(
+      keyBytes.byteOffset,
+      keyBytes.byteOffset + keyBytes.byteLength,
+    ) as ArrayBuffer,
   });
   return serialize(sub);
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+interface SerializableSubscription {
+  endpoint?: string;
+  keys?: { p256dh?: string; auth?: string } | Record<string, string>;
+}
+
 function serialize(sub: PushSubscription): SerializedSub {
-  const json = sub.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+  const json = sub.toJSON() as SerializableSubscription;
+  const keys = (json.keys ?? {}) as { p256dh?: string; auth?: string };
+  if (!json.endpoint || !keys.p256dh || !keys.auth) {
     throw new Error("Подписка некорректна");
   }
   return {
     endpoint: json.endpoint,
-    p256dh: json.keys.p256dh,
-    auth: json.keys.auth,
+    p256dh: keys.p256dh,
+    auth: keys.auth,
   };
 }
 
@@ -72,18 +84,6 @@ export async function unsubscribeFromPush(): Promise<boolean> {
   const sub = await reg.pushManager.getSubscription();
   if (!sub) return false;
   return await sub.unsubscribe();
-}
-
-export type { PushSubscription };
-
-declare global {
-  interface PushSubscriptionJSON {
-    endpoint?: string;
-    keys?: {
-      p256dh?: string;
-      auth?: string;
-    };
-  }
 }
 
 export function arrayBufferToB64(buf: ArrayBuffer): string {
