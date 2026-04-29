@@ -3,11 +3,11 @@ import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 
 import { useKillSwitch } from "@/api/useTrading";
+import { toast } from "@/lib/toast";
 
 /** Big red button that closes everything immediately. Two-step confirmation. */
 export function KillSwitch() {
   const [armed, setArmed] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
   const mut = useKillSwitch();
 
   const onClick = async () => {
@@ -17,13 +17,15 @@ export function KillSwitch() {
       return;
     }
     try {
-      const r = await mut.mutateAsync();
-      setFeedback(`Закрыто позиций: ${r.closed_count}`);
-    } catch (e) {
-      setFeedback(e instanceof Error ? e.message : "Не удалось");
+      const r = await toast.promise(mut.mutateAsync(), {
+        loading: "Закрываю все позиции…",
+        success: (v) => `Закрыто позиций: ${v.closed_count}`,
+        error: (e) => `Не удалось: ${e instanceof Error ? e.message : String(e)}`,
+      });
+      // toast already shown — no inline state needed.
+      void r;
     } finally {
       setArmed(false);
-      setTimeout(() => setFeedback(null), 4000);
     }
   };
 
@@ -49,9 +51,6 @@ export function KillSwitch() {
       >
         {mut.isPending ? "Закрываю…" : armed ? "Подтвердите — закрыть всё" : "Закрыть все позиции"}
       </motion.button>
-      {feedback && (
-        <p className="mt-3 text-xs text-muted-foreground">{feedback}</p>
-      )}
     </div>
   );
 }

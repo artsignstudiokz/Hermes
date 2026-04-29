@@ -4,6 +4,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { TitleBar } from "@/components/titlebar/TitleBar";
 import { SplashScreen } from "@/components/splash/SplashScreen";
 import { AppShell } from "@/components/layout/AppShell";
+import { CommandPalette } from "@/components/ui/CommandPalette";
+import { Toaster } from "@/components/ui/Toaster";
 import { Unlock } from "@/pages/Unlock";
 import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
@@ -59,6 +61,8 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <TitleBar />
+      <Toaster />
+      <CommandPalette />
       <Suspense fallback={<SplashScreen />}>
         <Routes>
           {auth.first_run ? (
