@@ -210,19 +210,21 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 icon_file = ASSETS / "app-icon.ico"
 version_file = ROOT / "packaging" / "pyinstaller" / "version_info.txt"
 
+# onedir mode — produces dist/Hermes/ folder with Hermes.exe + all DLLs/PYDs
+# loose. This is dramatically more reliable than onefile because PyInstaller
+# doesn't unpack to a temp dir at runtime — every package is just present
+# on disk where Python's import machinery expects it. Inno Setup ships the
+# whole folder so the user-visible install experience is identical.
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="Hermes",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -231,4 +233,15 @@ exe = EXE(
     entitlements_file=None,
     icon=str(icon_file) if icon_file.exists() else None,
     version=str(version_file) if (IS_WIN and version_file.exists()) else None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="Hermes",
 )

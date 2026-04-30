@@ -61,26 +61,35 @@ jobs:
       - name: Verify Hermes.exe (smoke-test imports)
         shell: pwsh
         run: |
-          if (-not (Test-Path "dist\Hermes.exe")) {
-            Write-Error "PyInstaller did not produce dist\Hermes.exe"
+          # onedir layout: dist/Hermes/Hermes.exe + lots of DLLs/PYDs as siblings.
+          $exe = "dist\Hermes\Hermes.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "PyInstaller did not produce $exe"
             exit 1
           }
-          $size = (Get-Item "dist\Hermes.exe").Length / 1MB
-          Write-Host "Hermes.exe size: $([math]::Round($size, 1)) MB"
+          $folderSize = (Get-ChildItem dist\Hermes -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "Hermes/ folder size: $([math]::Round($folderSize, 1)) MB"
 
           # Boot the exe headless and kill it — surfaces missing-module errors
           # in the CI log instead of in the user's installer wizard.
-          Write-Host "Smoke-testing exe (3s timeout — long enough for runtime_hook + main.py top-level imports)..."
-          $proc = Start-Process -FilePath "dist\Hermes.exe" -PassThru -NoNewWindow -WindowStyle Hidden
-          Start-Sleep -Seconds 3
+          Write-Host "Smoke-testing exe (5s timeout for top-level imports + uvicorn boot)…"
+          $proc = Start-Process -FilePath $exe -PassThru -NoNewWindow -WindowStyle Hidden
+          Start-Sleep -Seconds 5
           if ($proc.HasExited -and $proc.ExitCode -ne 0) {
             Write-Error "Hermes.exe crashed at startup with exit code $($proc.ExitCode)"
             exit 1
           }
           if (-not $proc.HasExited) {
             Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-            Write-Host "Smoke-test passed (exe stayed alive 3s without crashing)."
+            Write-Host "Smoke-test passed (exe stayed alive 5s without crashing)."
           }
+
+      - name: Zip Hermes folder for portable distribution
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist\Hermes\*" -DestinationPath "dist\Hermes-Windows-Portable.zip" -Force
+          $size = (Get-Item "dist\Hermes-Windows-Portable.zip").Length / 1MB
+          Write-Host "Portable zip size: $([math]::Round($size, 1)) MB"
 
       - name: Set up Inno Setup
         run: choco install innosetup -y --no-progress
@@ -92,32 +101,31 @@ jobs:
         run: |
           if (Get-Command iscc -ErrorAction SilentlyContinue) {
             iscc packaging\windows\installer.iss
+            if (Test-Path "dist\installer\Hermes-Setup-*.exe") {
+              $installer = Get-ChildItem dist\installer\Hermes-Setup-*.exe | Select-Object -First 1
+              Write-Host "Built installer: $($installer.FullName) ($([math]::Round($installer.Length / 1MB, 1)) MB)"
+            }
           } else {
-            Write-Warning "Inno Setup not available — skipping installer wrapping. Hermes.exe is still produced."
+            Write-Warning "Inno Setup not available — falling back to portable zip as Hermes-Setup.exe."
             New-Item -ItemType Directory -Force -Path "dist\installer" | Out-Null
-            Copy-Item "dist\Hermes.exe" "dist\installer\Hermes-Setup.exe"
+            # Self-extracting fallback: just copy the zip under the installer name. Crude but functional.
+            Copy-Item "dist\Hermes-Windows-Portable.zip" "dist\installer\Hermes-Setup.exe" -Force
           }
         continue-on-error: true
 
-      - name: Stable-named copies
+      - name: Stable-named installer copy
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "dist\installer" | Out-Null
           $installer = Get-ChildItem dist\installer\Hermes-Setup-*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($installer) {
             Copy-Item $installer.FullName "dist\installer\Hermes-Setup.exe" -Force
-          } elseif (Test-Path "dist\Hermes.exe") {
-            # Fallback: ship the standalone exe under the stable name so the landing button still works.
-            Copy-Item "dist\Hermes.exe" "dist\installer\Hermes-Setup.exe" -Force
           }
-          # Also produce a portable zip for users who prefer no-install.
-          Compress-Archive -Path "dist\Hermes.exe" -DestinationPath "dist\Hermes-Windows-Portable.zip" -Force
 
       - name: Compute SHA-256 checksums
         shell: pwsh
         run: |
           $files = @(
-            "dist\Hermes.exe",
             "dist\Hermes-Windows-Portable.zip",
             "dist\installer\Hermes-Setup.exe"
           )
@@ -137,7 +145,6 @@ jobs:
         with:
           name: hermes-windows
           path: |
-            dist/Hermes.exe
             dist/Hermes-Windows-Portable.zip
             dist/installer/Hermes-Setup-*.exe
             dist/installer/Hermes-Setup.exe

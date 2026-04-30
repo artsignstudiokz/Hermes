@@ -56,9 +56,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "�
 Name: "startupicon"; Description: "Запускать Hermes при старте Windows"; GroupDescription: "Дополнительно:"; Flags: unchecked
 
 [Files]
-; Single PyInstaller-built executable (frontend bundled inside).
-Source: "..\..\dist\{#AppExeName}";   DestDir: "{app}"; Flags: ignoreversion
-Source: "assets\app-icon.ico";        DestDir: "{app}"; Flags: ignoreversion
+; PyInstaller onedir output: dist\Hermes\ contains Hermes.exe + all DLLs/PYDs.
+; This is dramatically more reliable than onefile (no _MEIPASS unpacking,
+; every Python module is just on disk where the import machinery expects it).
+Source: "..\..\dist\Hermes\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "assets\app-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}";              Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\app-icon.ico"
