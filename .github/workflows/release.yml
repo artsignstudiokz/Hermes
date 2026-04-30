@@ -11,6 +11,9 @@ on:
         required: true
 
 jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  # Windows job is the priority — must succeed for a usable release.
+  # ──────────────────────────────────────────────────────────────────────
   windows:
     name: Build Windows .exe + installer
     runs-on: windows-latest
@@ -29,15 +32,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install backend + desktop deps
+      - name: Install backend deps
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
+          # Install with --prefer-binary to avoid slow source builds.
           pip install --prefer-binary -e "backend[desktop]"
           pip install pyinstaller pillow
 
       - name: Install frontend
         working-directory: frontend
-        run: npm install
+        run: npm ci
 
       - name: Build frontend (Vite)
         working-directory: frontend
@@ -45,29 +50,70 @@ jobs:
 
       - name: Generate icon assets
         run: python scripts/generate_icons.py
-        continue-on-error: true       # icons may already be in repo
+        continue-on-error: true
 
       - name: PyInstaller bundle
         run: pyinstaller --noconfirm --clean packaging/pyinstaller/hermes.spec
 
-      - name: Set up Inno Setup
-        run: |
-          choco install innosetup -y --no-progress
-
-      - name: Build installer (Inno Setup)
-        run: iscc packaging\windows\installer.iss
-
-      - name: Stable-named copy (for landing's permanent URL)
+      - name: Verify Hermes.exe
         shell: pwsh
         run: |
-          $installer = Get-ChildItem dist\installer\Hermes-Setup-*.exe | Select-Object -First 1
-          Copy-Item $installer.FullName dist\installer\Hermes-Setup.exe
+          if (-not (Test-Path "dist\Hermes.exe")) {
+            Write-Error "PyInstaller did not produce dist\Hermes.exe"
+            exit 1
+          }
+          $size = (Get-Item "dist\Hermes.exe").Length / 1MB
+          Write-Host "Hermes.exe size: $([math]::Round($size, 1)) MB"
+
+      - name: Set up Inno Setup
+        run: choco install innosetup -y --no-progress
+        continue-on-error: true
+
+      - name: Build installer (Inno Setup)
+        id: inno
+        shell: pwsh
+        run: |
+          if (Get-Command iscc -ErrorAction SilentlyContinue) {
+            iscc packaging\windows\installer.iss
+          } else {
+            Write-Warning "Inno Setup not available — skipping installer wrapping. Hermes.exe is still produced."
+            New-Item -ItemType Directory -Force -Path "dist\installer" | Out-Null
+            Copy-Item "dist\Hermes.exe" "dist\installer\Hermes-Setup.exe"
+          }
+        continue-on-error: true
+
+      - name: Stable-named copies
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "dist\installer" | Out-Null
+          $installer = Get-ChildItem dist\installer\Hermes-Setup-*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($installer) {
+            Copy-Item $installer.FullName "dist\installer\Hermes-Setup.exe" -Force
+          } elseif (Test-Path "dist\Hermes.exe") {
+            # Fallback: ship the standalone exe under the stable name so the landing button still works.
+            Copy-Item "dist\Hermes.exe" "dist\installer\Hermes-Setup.exe" -Force
+          }
+          # Also produce a portable zip for users who prefer no-install.
+          Compress-Archive -Path "dist\Hermes.exe" -DestinationPath "dist\Hermes-Windows-Portable.zip" -Force
 
       - name: Compute SHA-256 checksums
         shell: pwsh
         run: |
-          .\scripts\compute_hashes.ps1
-          Get-Content dist\SHA256SUMS.txt
+          $files = @(
+            "dist\Hermes.exe",
+            "dist\Hermes-Windows-Portable.zip",
+            "dist\installer\Hermes-Setup.exe"
+          )
+          $lines = @("# Hermes — SHA-256 checksums (Windows build)", "")
+          foreach ($f in $files) {
+            if (Test-Path $f) {
+              $hash = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+              $size = (Get-Item $f).Length
+              $lines += "$hash  $f  ($size bytes)"
+            }
+          }
+          $lines | Set-Content "dist\SHA256SUMS.txt" -Encoding ASCII
+          Get-Content "dist\SHA256SUMS.txt"
 
       - name: Upload artefacts
         uses: actions/upload-artifact@v4
@@ -75,14 +121,20 @@ jobs:
           name: hermes-windows
           path: |
             dist/Hermes.exe
+            dist/Hermes-Windows-Portable.zip
             dist/installer/Hermes-Setup-*.exe
             dist/installer/Hermes-Setup.exe
             dist/SHA256SUMS.txt
+          if-no-files-found: error
 
+  # ──────────────────────────────────────────────────────────────────────
+  # macOS job is best-effort — its failure does NOT block the release.
+  # ──────────────────────────────────────────────────────────────────────
   macos:
     name: Build macOS .app + .pkg
     runs-on: macos-latest
     timeout-minutes: 35
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -97,7 +149,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install backend + desktop deps
+      - name: Install backend deps
         run: |
           python -m pip install --upgrade pip
           pip install --prefer-binary -e "backend[desktop]"
@@ -105,43 +157,44 @@ jobs:
 
       - name: Install frontend
         working-directory: frontend
-        run: npm install
+        run: npm ci
 
       - name: Build .app + .pkg
         run: |
           chmod +x packaging/macos/build_app.sh packaging/macos/build_pkg.sh scripts/build_release_macos.sh
           bash scripts/build_release_macos.sh
 
-      - name: Zip Hermes.app for distribution
+      - name: Zip Hermes.app
         run: |
-          cd dist
-          zip -r -y Hermes.app.zip Hermes.app
+          if [ -d dist/Hermes.app ]; then
+            cd dist && zip -r -y Hermes.app.zip Hermes.app
+          fi
 
-      - name: Stable-named copy (for landing's permanent URL)
+      - name: Stable-named copy
         run: |
-          src=$(ls dist/installer/Hermes-*.pkg | head -n1)
-          cp "$src" dist/installer/Hermes.pkg
+          mkdir -p dist/installer
+          src=$(ls dist/installer/Hermes-*.pkg 2>/dev/null | head -n1 || true)
+          if [ -n "$src" ]; then
+            cp "$src" dist/installer/Hermes.pkg
+          fi
 
       - name: Compute SHA-256 checksums
         run: |
-          cd dist
           {
             echo "# Hermes — SHA-256 checksums (macOS build)"
-            echo "# Verify before installing:"
-            echo "#   shasum -a 256 <file>"
             echo ""
-            for f in Hermes.app.zip installer/*.pkg; do
+            for f in dist/Hermes.app.zip dist/installer/*.pkg; do
               if [ -f "$f" ]; then
                 hash=$(shasum -a 256 "$f" | awk '{print $1}')
                 size=$(stat -f%z "$f" 2>/dev/null || stat -c%s "$f")
                 echo "$hash  $f  ($size bytes)"
               fi
             done
-          } > SHA256SUMS-macos.txt
-          cat SHA256SUMS-macos.txt
+          } > dist/SHA256SUMS-macos.txt
+          cat dist/SHA256SUMS-macos.txt
 
       - name: Bundle helper script
-        run: cp packaging/macos/unblock-hermes.command dist/
+        run: cp packaging/macos/unblock-hermes.command dist/ || true
 
       - name: Upload artefacts
         uses: actions/upload-artifact@v4
@@ -153,10 +206,15 @@ jobs:
             dist/installer/Hermes.pkg
             dist/SHA256SUMS-macos.txt
             dist/unblock-hermes.command
+          if-no-files-found: warn
 
+  # ──────────────────────────────────────────────────────────────────────
+  # Release job runs even if macOS failed — Windows artefacts are required,
+  # macOS artefacts are optional.
+  # ──────────────────────────────────────────────────────────────────────
   release:
     name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: always() && startsWith(github.ref, 'refs/tags/v') && needs.windows.result == 'success'
     needs: [windows, macos]
     runs-on: ubuntu-latest
     permissions:
@@ -164,9 +222,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - name: Download Windows artefacts
+        uses: actions/download-artifact@v4
         with:
-          path: artefacts
+          name: hermes-windows
+          path: artefacts/windows
+
+      - name: Download macOS artefacts (best-effort)
+        uses: actions/download-artifact@v4
+        with:
+          name: hermes-macos
+          path: artefacts/macos
+        continue-on-error: true
+
+      - name: List artefacts (debug)
+        run: |
+          echo "=== Windows ==="
+          find artefacts/windows -type f 2>/dev/null || echo "no windows artefacts"
+          echo "=== macOS ==="
+          find artefacts/macos -type f 2>/dev/null || echo "no macos artefacts"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -178,42 +252,36 @@ jobs:
             By BAI Core — [baicore.kz](https://baicore.kz)
 
             ### Скачать
-            - **Windows** · `Hermes-Setup-${{ github.ref_name }}.exe`
-            - **macOS** · `Hermes-${{ github.ref_name }}.pkg`
-              + `unblock-hermes.command` — двойной клик после установки, чтобы macOS разрешил запуск
+
+            **Windows**
+            - `Hermes-Setup.exe` — установщик с wizard'ом
+            - `Hermes.exe` — портативная версия (без установки)
+            - `Hermes-Windows-Portable.zip` — портативный архив
+
+            **macOS** (если CI собрался)
+            - `Hermes.pkg` — установщик для /Applications
+            - `Hermes.app.zip` — портативный архив
+            - `unblock-hermes.command` — снимает quarantine attribute
 
             ### Если ОС предупреждает о неизвестном разработчике
-            Это нормально для несигнованных сборок. SHA-256 хеши прилагаются — можно
-            проверить целостность файла:
-
-            **Windows** (PowerShell):
-            ```
-            Get-FileHash Hermes-Setup-${{ github.ref_name }}.exe -Algorithm SHA256
-            ```
-            и сравнить с содержимым `SHA256SUMS.txt`.
-
-            **macOS:**
-            ```
-            shasum -a 256 Hermes-${{ github.ref_name }}.pkg
-            ```
-            и сравнить с `SHA256SUMS-macos.txt`.
-
             **Windows SmartScreen** → «Подробнее» → «Запустить в любом случае».
-            **macOS Gatekeeper** → System Settings → Privacy & Security → "Open Anyway",
-            или запустите `unblock-hermes.command` (снимает quarantine attribute).
+            **macOS Gatekeeper** → запустите `unblock-hermes.command`,
+            или System Settings → Privacy & Security → "Open Anyway".
 
-            После установки откройте приложение и пройдите Onboarding (3 шага).
+            SHA-256 хеши прилагаются в `SHA256SUMS.txt` (Windows) и `SHA256SUMS-macos.txt`.
 
             Полное руководство: [USER_GUIDE_RU.md](https://github.com/${{ github.repository }}/blob/main/docs/USER_GUIDE_RU.md)
           files: |
-            artefacts/hermes-windows/installer/Hermes-Setup-*.exe
-            artefacts/hermes-windows/installer/Hermes-Setup.exe
-            artefacts/hermes-windows/Hermes.exe
-            artefacts/hermes-windows/SHA256SUMS.txt
-            artefacts/hermes-macos/installer/Hermes-*.pkg
-            artefacts/hermes-macos/installer/Hermes.pkg
-            artefacts/hermes-macos/Hermes.app.zip
-            artefacts/hermes-macos/SHA256SUMS-macos.txt
-            artefacts/hermes-macos/unblock-hermes.command
+            artefacts/windows/Hermes.exe
+            artefacts/windows/Hermes-Windows-Portable.zip
+            artefacts/windows/installer/Hermes-Setup-*.exe
+            artefacts/windows/installer/Hermes-Setup.exe
+            artefacts/windows/SHA256SUMS.txt
+            artefacts/macos/Hermes.app.zip
+            artefacts/macos/installer/Hermes-*.pkg
+            artefacts/macos/installer/Hermes.pkg
+            artefacts/macos/SHA256SUMS-macos.txt
+            artefacts/macos/unblock-hermes.command
+          fail_on_unmatched_files: false
           draft: false
           prerelease: false

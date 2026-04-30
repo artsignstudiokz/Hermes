@@ -1,26 +1,32 @@
 # PyInstaller spec for Hermes (BAI Core).
 # Build:  pyinstaller packaging/pyinstaller/hermes.spec
 #
-# Produces a single console-less .exe bundling the FastAPI backend, the React
-# frontend (frontend/dist), and PyWebView. Output: dist/Hermes.exe
+# Single console-less .exe that bundles the FastAPI backend, the React
+# frontend (frontend/dist), and PyWebView. Windows: dist/Hermes.exe.
+# macOS:   dist/Hermes.app via the `--windowed` flag in build_app.sh.
 
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
 from pathlib import Path
 
-ROOT = Path(SPECPATH).resolve().parent.parent  # noqa: F821 (defined by PyInstaller)
+ROOT = Path(SPECPATH).resolve().parent.parent  # noqa: F821 (SPECPATH defined by PyInstaller)
 BACKEND = ROOT / "backend"
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 ASSETS = ROOT / "packaging" / "windows" / "assets"
 
 block_cipher = None
+IS_WIN = sys.platform == "win32"
+IS_MAC = sys.platform == "darwin"
 
+# ── Bundled data ──────────────────────────────────────────────────────────
 datas = []
 if FRONTEND_DIST.exists():
     datas.append((str(FRONTEND_DIST), "backend/app/static"))
 if ASSETS.exists():
     datas.append((str(ASSETS), "packaging/windows/assets"))
 
+# ── Hidden imports (only those PyInstaller's static analysis misses) ──────
 hidden_imports = [
     # Web stack
     "uvicorn",
@@ -34,13 +40,14 @@ hidden_imports = [
     "websockets.legacy.server",
     "h11",
     "starlette",
-    # Brokers
-    "MetaTrader5",
+
+    # Brokers (cross-platform: ccxt). MT5 added below for Windows only.
     "ccxt",
     "ccxt.async_support",
     "ccxt.async_support.binance",
     "ccxt.async_support.bybit",
     "ccxt.async_support.okx",
+
     # ML / numerics
     "optuna",
     "optuna.samplers",
@@ -51,10 +58,12 @@ hidden_imports = [
     "scipy.signal",
     "pandas",
     "numpy",
+
     # Storage
     "aiosqlite",
     "sqlalchemy.dialects.sqlite",
     "alembic",
+
     # Security
     "cryptography.hazmat.backends.openssl",
     "argon2",
@@ -62,6 +71,7 @@ hidden_imports = [
     "argon2.low_level",
     "jwt",
     "jwt.algorithms",
+
     # Notifications + tunnel
     "pywebpush",
     "py_vapid",
@@ -69,15 +79,35 @@ hidden_imports = [
     "qrcode.image.pil",
     "PIL",
     "pyngrok",
+
     # Scheduler
     "apscheduler",
     "apscheduler.schedulers.asyncio",
     "apscheduler.triggers.cron",
     "apscheduler.triggers.interval",
+
     # Misc
     "platformdirs",
-    "win10toast",
-    "yfinance",
+]
+
+# Platform-conditional hidden imports — adding non-installed packages to this
+# list aborts PyInstaller's analysis on the wrong platform.
+if IS_WIN:
+    hidden_imports += ["MetaTrader5", "win10toast"]
+if IS_MAC:
+    hidden_imports += ["pync"]
+
+# ── Excludes — heavy or platform-specific deps that the legacy code
+#     references lazily. They are not needed for the desktop runtime
+#     and would bloat the bundle by tens of megabytes if pulled in.
+excludes = [
+    "tkinter.test",
+    "test",
+    "unittest",
+    "yfinance",            # legacy backtester historic data — runtime-optional
+    "matplotlib",          # legacy reporting — not used by the desktop app
+    "matplotlib.pyplot",
+    "seaborn",
 ]
 
 a = Analysis(
@@ -86,14 +116,17 @@ a = Analysis(
     binaries=[],
     datas=datas,
     hiddenimports=hidden_imports,
-    hookspath=[str(ROOT / "packaging" / "pyinstaller" / "hooks")],
+    hookspath=[],
     runtime_hooks=[str(ROOT / "packaging" / "pyinstaller" / "runtime_hook.py")],
-    excludes=["tkinter.test", "test", "unittest"],
+    excludes=excludes,
     cipher=block_cipher,
     noarchive=False,
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+icon_file = ASSETS / "app-icon.ico"
+version_file = ROOT / "packaging" / "pyinstaller" / "version_info.txt"
 
 exe = EXE(
     pyz,
@@ -114,6 +147,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ASSETS / "app-icon.ico"),
-    version=str(ROOT / "packaging" / "pyinstaller" / "version_info.txt"),
+    icon=str(icon_file) if icon_file.exists() else None,
+    version=str(version_file) if (IS_WIN and version_file.exists()) else None,
 )
