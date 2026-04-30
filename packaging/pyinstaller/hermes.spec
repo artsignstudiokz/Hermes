@@ -10,6 +10,8 @@
 import sys
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_all, collect_submodules
+
 ROOT = Path(SPECPATH).resolve().parent.parent  # noqa: F821 (SPECPATH defined by PyInstaller)
 BACKEND = ROOT / "backend"
 FRONTEND_DIST = ROOT / "frontend" / "dist"
@@ -21,10 +23,41 @@ IS_MAC = sys.platform == "darwin"
 
 # ── Bundled data ──────────────────────────────────────────────────────────
 datas = []
+binaries = []
 if FRONTEND_DIST.exists():
     datas.append((str(FRONTEND_DIST), "backend/app/static"))
 if ASSETS.exists():
     datas.append((str(ASSETS), "packaging/windows/assets"))
+
+# ── collect_all for packages that have data files / dynamic submodules ───
+# These are notoriously hard for PyInstaller's static analysis to fully
+# pick up. Using collect_all walks the package tree and adds everything.
+for pkg in (
+    "platformdirs",
+    "ccxt",
+    "uvicorn",
+    "fastapi",
+    "starlette",
+    "pydantic",
+    "pydantic_settings",
+    "argon2",
+    "pywebpush",
+    "py_vapid",
+    "qrcode",
+    "PIL",
+    "apscheduler",
+    "optuna",
+    "sqlalchemy",
+    "pyngrok",
+    "webview",
+):
+    try:
+        d, b, h = collect_all(pkg)
+        datas.extend(d)
+        binaries.extend(b)
+    except Exception:
+        # Package may not be installed (e.g. webview on macOS via different name).
+        pass
 
 # ── Hidden imports (only those PyInstaller's static analysis misses) ──────
 hidden_imports = [
@@ -110,10 +143,16 @@ excludes = [
     "seaborn",
 ]
 
+# Add submodules from packages that frequently miss their dynamic imports.
+hidden_imports.extend(collect_submodules("platformdirs"))
+hidden_imports.extend(collect_submodules("pydantic"))
+hidden_imports.extend(collect_submodules("pydantic_settings"))
+hidden_imports.extend(collect_submodules("argon2"))
+
 a = Analysis(
     [str(ROOT / "desktop" / "main.py")],
     pathex=[str(ROOT), str(BACKEND)],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hidden_imports,
     hookspath=[],
