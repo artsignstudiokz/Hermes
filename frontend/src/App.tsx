@@ -6,6 +6,7 @@ import { SplashScreen } from "@/components/splash/SplashScreen";
 import { AppShell } from "@/components/layout/AppShell";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { Toaster } from "@/components/ui/Toaster";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Unlock } from "@/pages/Unlock";
 import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
@@ -63,6 +64,7 @@ export default function App() {
       <TitleBar />
       <Toaster />
       <CommandPalette />
+      <ErrorBoundary>
       <Suspense fallback={<SplashScreen />}>
         <Routes>
           {auth.first_run ? (
@@ -96,6 +98,7 @@ export default function App() {
           )}
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

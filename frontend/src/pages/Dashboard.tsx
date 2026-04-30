@@ -91,14 +91,10 @@ export function Dashboard() {
         status={
           <div className="flex items-center gap-2">
             <BotStatusBadge />
-            {regime.data && (
+            {regime.data && regime.data.per_pair.length > 0 && (
               <RegimeBadge
                 regime={regime.data.regime}
-                confidence={
-                  regime.data.per_pair[0]?.confidence ??
-                  Math.max(...Object.values(regime.data.counts ?? {})) /
-                    Math.max(1, regime.data.per_pair.length || 1)
-                }
+                confidence={regime.data.per_pair[0]?.confidence ?? 0}
               />
             )}
           </div>

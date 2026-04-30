@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import platform
 from collections import deque
 from pathlib import Path
@@ -15,6 +16,13 @@ from app.services.update_service import check_for_update
 from app.settings import Settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+class ClientError(BaseModel):
+    message: str
+    stack: str = ""
+    component_stack: str = ""
 
 
 class HealthResponse(BaseModel):
@@ -71,6 +79,16 @@ async def tail_logs(
     with log_file.open("r", encoding="utf-8", errors="replace") as f:
         lines = list(deque(f, maxlen=tail))
     return LogsResponse(lines=[ln.rstrip("\n") for ln in lines])
+
+
+@router.post("/log-client-error", status_code=204)
+async def log_client_error(err: ClientError) -> None:
+    # SPA reports JS errors / unhandled rejections here so they survive
+    # in hermes.log. --windowed builds have no devtools by default.
+    logger.error(
+        "[client] %s\nStack: %s\nComponent: %s",
+        err.message, err.stack, err.component_stack,
+    )
 
 
 @router.post("/check-update", response_model=UpdateCheckResponse)
