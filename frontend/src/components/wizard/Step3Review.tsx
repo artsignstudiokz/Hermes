@@ -1,9 +1,8 @@
-import { ChevronLeft, Loader2, Power, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { useBrokers, useActivateBroker } from "@/api/useBrokers";
 import { useStrategyConfig } from "@/api/useStrategy";
-import { useStartTrading } from "@/api/useTrading";
 import { ApiError } from "@/lib/api";
 import { toast } from "@/lib/toast";
 
@@ -16,9 +15,11 @@ export function Step3Review({ onPrev, onDone }: Props) {
   const brokers = useBrokers();
   const config = useStrategyConfig();
   const activate = useActivateBroker();
-  const start = useStartTrading();
 
   const broker = brokers.data?.[0];
+  // We only activate the broker here — we do NOT auto-start trading.
+  // User makes the explicit decision to begin live trading from the
+  // Dashboard "Запустить" button after they've reviewed the state.
   const launch = async () => {
     if (!broker) {
       toast.error("Брокер не настроен", "Вернитесь на шаг 1 и подключите счёт.");
@@ -26,23 +27,23 @@ export function Step3Review({ onPrev, onDone }: Props) {
     }
     try {
       if (!broker.is_active) await activate.mutateAsync(broker.id);
-      await start.mutateAsync(broker.id);
-      toast.success("Hermes запущен", "Боги торговли с вами.");
+      toast.success("Готов к запуску", "Откроется панель — нажмите «Запустить», когда будете готовы.");
       onDone();
     } catch (err) {
       const detail = err instanceof ApiError
         ? `${err.status}: ${err.message}`
         : err instanceof Error ? err.message : String(err);
-      toast.error("Не удалось запустить", detail);
+      toast.error("Не удалось активировать", detail);
     }
   };
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="display text-3xl font-semibold gold-text">Готовы запустить Hermes</h2>
+        <h2 className="display text-3xl font-semibold gold-text">Всё готово</h2>
         <p className="mt-2 font-serif italic text-muted-foreground">
-          Проверьте детали и нажмите «Запустить». Бог торговли начнёт работу.
+          Брокер подключён, стратегия выбрана. На следующем шаге откроется панель — там
+          вы сами решите, когда дать Гермесу начать торговать.
         </p>
       </div>
 
@@ -76,8 +77,10 @@ export function Step3Review({ onPrev, onDone }: Props) {
         <div className="flex items-start gap-2">
           <Sparkles size={16} className="mt-0.5 text-hermes-gold-deep" />
           <p>
-            После запуска вы попадёте на главный экран и увидите live-обновления баланса и
-            позиций. В любой момент можете нажать «Пауза» или «Аварийная остановка».
+            Когда нажмёте «Запустить» на панели, Гермес начнёт постоянно анализировать рынок:
+            сам открывает сделки, когда срабатывают сигналы стратегии, и сам закрывает их
+            по тейк-профиту / стоп-лоссу / просадке. Все открытые позиции на брокере он
+            подхватит сразу, история сделок ведётся непрерывно.
           </p>
         </div>
       </motion.div>
@@ -91,15 +94,15 @@ export function Step3Review({ onPrev, onDone }: Props) {
         </button>
         <button
           onClick={launch}
-          disabled={!broker || start.isPending || activate.isPending}
+          disabled={!broker || activate.isPending}
           className="gold-button inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-wider disabled:opacity-50"
         >
-          {(start.isPending || activate.isPending) ? (
+          {activate.isPending ? (
             <Loader2 size={14} className="animate-spin" />
           ) : (
-            <Power size={14} />
+            <ChevronRight size={14} />
           )}
-          Запустить Hermes
+          Открыть панель
         </button>
       </div>
     </div>

@@ -10,6 +10,8 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
+from sqlalchemy import select
+
 from app.api.ws.manager import WebSocketManager
 from app.core.brokers.base import BrokerAdapter
 from app.core.notifications.service import NotificationService
@@ -44,6 +46,12 @@ class TradingWorker:
         self._last_tick: datetime | None = None
         self._last_error: str | None = None
         self._tick_count = 0
+        # First tick after start runs in observation-only mode: it picks
+        # up any positions already open on the broker, snapshots equity,
+        # but does NOT call strategy.on_bar — so the bot doesn't slam new
+        # orders the second the user clicks Start. From the second tick
+        # onward, the strategy runs normally.
+        self._observe_only_first_tick = True
 
     @property
     def state(self) -> dict:
@@ -60,6 +68,15 @@ class TradingWorker:
             return
         await self._runner.setup()
         self._stop_evt.clear()
+        self._observe_only_first_tick = True
+        # Seed an immediate observation tick so existing broker positions
+        # show up on the Dashboard at once. Strategy logic stays inhibited
+        # for this one — see _observe_only_first_tick above.
+        sm = get_sessionmaker()
+        try:
+            await self._tick(sm)
+        except Exception:
+            logger.exception("Initial observation tick failed (will retry on schedule)")
         self._task = asyncio.create_task(self._run(), name="hermes-trading-worker")
         logger.info("Trading worker started for account %d", self._account_id)
 
@@ -115,7 +132,12 @@ class TradingWorker:
             raise
 
     async def _tick(self, sm) -> None:
-        actions = await self._runner.tick()
+        if self._observe_only_first_tick:
+            actions: list[dict] = []
+            self._observe_only_first_tick = False
+            logger.info("Initial observation tick — syncing broker state without trading")
+        else:
+            actions = await self._runner.tick()
         self._last_tick = datetime.now(timezone.utc)
         self._tick_count += 1
 
@@ -154,6 +176,28 @@ class TradingWorker:
                         opened_at=self._last_tick,
                         reason="grid_entry",
                     ))
+                elif action.get("action") == "close_basket":
+                    # Mark every still-open trade for this symbol as closed.
+                    # close_basket aggregates the basket P&L; per-trade exit
+                    # price isn't reported by the strategy, so we use the
+                    # latest snapshot price as an approximation and leave
+                    # exact reconciliation to a future broker-history sync.
+                    sym = action.get("symbol")
+                    pnl = float(action.get("pnl") or 0.0)
+                    reason = str(action.get("reason") or "close_basket")
+                    open_trades = (await session.execute(
+                        select(TradeRow).where(
+                            TradeRow.broker_account_id == self._account_id,
+                            TradeRow.symbol == sym,
+                            TradeRow.closed_at.is_(None),
+                        ),
+                    )).scalars().all()
+                    n = max(1, len(open_trades))
+                    per_trade_pnl = pnl / n
+                    for tr in open_trades:
+                        tr.closed_at = self._last_tick
+                        tr.pnl = per_trade_pnl
+                        tr.reason = reason
             await session.commit()
 
         # Broadcast over WS.

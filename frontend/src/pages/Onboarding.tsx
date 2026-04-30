@@ -78,9 +78,9 @@ export function Onboarding() {
               <Check size={40} />
             </div>
           </div>
-          <h1 className="display mt-4 text-3xl font-semibold gold-text">Hermes уже работает</h1>
+          <h1 className="display mt-4 text-3xl font-semibold gold-text">Всё настроено</h1>
           <p className="mt-2 font-serif italic text-muted-foreground">
-            «Дальше я работаю сам. Ваше дело — наблюдать.»
+            «Жду вашего знака — нажмите «Запустить» на панели, когда будете готовы.»
           </p>
           <button
             onClick={() => location.assign("/")}
