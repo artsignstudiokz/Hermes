@@ -36,36 +36,71 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          # Install with --prefer-binary to avoid slow source builds.
+          # Install pyproject deps first.
           pip install --prefer-binary -e "backend[desktop]"
+          # Belt-and-suspenders: explicit install of every critical package.
+          # If pyproject extras resolution had any quirk, these guarantee deps land.
+          pip install --prefer-binary `
+            "httpx>=0.27,<1.0" `
+            "uvicorn[standard]>=0.32,<1.0" `
+            "fastapi>=0.115,<1.0" `
+            "pydantic>=2.9,<3.0" `
+            "pydantic-settings>=2.6,<3.0" `
+            "sqlalchemy>=2.0,<3.0" `
+            "aiosqlite>=0.20,<1.0" `
+            "alembic>=1.13,<2.0" `
+            "cryptography>=43.0,<46.0" `
+            "argon2-cffi>=23.1,<25.0" `
+            "pyjwt[crypto]>=2.9,<3.0" `
+            "python-multipart>=0.0.20,<1.0" `
+            "platformdirs>=4.3,<5.0" `
+            "websockets>=13.1,<15.0" `
+            "python-dateutil>=2.9,<3.0" `
+            "apscheduler>=3.10,<4.0" `
+            "slowapi>=0.1.9,<1.0" `
+            "pandas>=2.2,<3.0" `
+            "numpy>=1.26,<3.0" `
+            "scipy>=1.13,<2.0" `
+            "optuna>=4.0,<5.0" `
+            "ccxt>=4.4,<5.0" `
+            "pywebpush>=2.0,<3.0" `
+            "qrcode[pil]>=8.0,<9.0" `
+            "pyngrok>=7.2,<8.0" `
+            "MetaTrader5>=5.0.45" `
+            "pywebview>=5.3,<6.0" `
+            "win10toast>=0.9"
           pip install pyinstaller pillow
 
-      - name: Diagnose installed packages (informational)
+      - name: Verify all critical deps installed (FAIL build if missing)
         shell: pwsh
-        continue-on-error: true
         run: |
-          Write-Host "=== pip list ==="
-          pip list
+          Write-Host "=== pip list (excerpt) ==="
+          pip list | Select-String -Pattern "httpx|fastapi|uvicorn|pydantic|sqlalchemy|aiosqlite|alembic|cryptography|argon2|pyjwt|multipart|platformdirs|websockets|apscheduler|slowapi|pandas|numpy|scipy|optuna|ccxt|pywebpush|qrcode|pyngrok|MetaTrader|pywebview|win10toast"
           Write-Host ""
-          Write-Host "=== Import check (informational — non-fatal) ==="
-          $modules = @("httpx", "platformdirs", "uvicorn", "fastapi", "pydantic", "argon2",
-                       "ccxt", "webview", "sqlalchemy", "aiosqlite", "pywebpush", "qrcode",
-                       "apscheduler", "scipy", "pandas", "numpy", "optuna", "cryptography", "jwt")
+          Write-Host "=== Import check (CRITICAL — build fails if any module missing) ==="
+          $critical = @("httpx", "platformdirs", "uvicorn", "fastapi", "pydantic", "pydantic_settings",
+                        "argon2", "ccxt", "webview", "sqlalchemy", "aiosqlite", "alembic",
+                        "pywebpush", "qrcode", "apscheduler", "scipy", "pandas", "numpy",
+                        "optuna", "cryptography", "jwt", "websockets", "MetaTrader5")
           $failed = @()
-          foreach ($m in $modules) {
+          foreach ($m in $critical) {
             $check = python -c "import $m; print(getattr($m, '__version__', '?'))" 2>&1
             if ($LASTEXITCODE -eq 0) {
               Write-Host "  OK    $m  $check"
             } else {
-              Write-Host "  WARN  $m  → $check"
+              Write-Host "  FAIL  $m  -> $check"
               $failed += $m
             }
           }
           if ($failed.Count -gt 0) {
             Write-Host ""
-            Write-Host "WARN: These packages did not import — bundle MIGHT be incomplete:"
+            Write-Host "Critical packages failed to import:"
             $failed | ForEach-Object { Write-Host "  - $_" }
+            Write-Error "Build aborted — bundle would be incomplete without these packages."
+            exit 1
           }
+          Write-Host ""
+          Write-Host "All critical packages import OK — safe to bundle."
 
       - name: Install frontend
         working-directory: frontend
@@ -85,34 +120,91 @@ jobs:
       - name: PyInstaller bundle
         run: pyinstaller --noconfirm --clean packaging/pyinstaller/hermes.spec
 
-      - name: Verify Hermes.exe (smoke-test imports)
+      - name: Verify PyInstaller bundle (filesystem check)
         shell: pwsh
         run: |
-          # onedir layout: dist/Hermes/Hermes.exe + lots of DLLs/PYDs as siblings.
+          # onedir layout: dist/Hermes/Hermes.exe + dist/Hermes/_internal/* (libs)
           $exe = "dist\Hermes\Hermes.exe"
           if (-not (Test-Path $exe)) {
             Write-Error "PyInstaller did not produce $exe"
             exit 1
           }
-          $folderSize = (Get-ChildItem dist\Hermes -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "Hermes/ folder size: $([math]::Round($folderSize, 1)) MB"
+          $folderSize = [math]::Round((Get-ChildItem dist\Hermes -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+          Write-Host "Hermes/ folder size: $folderSize MB"
 
-          # Boot the exe headless and kill it — surfaces missing-module errors
-          # in the CI log instead of in the user's installer wizard.
-          # Note: PyInstaller --windowed apps spawn no console, so -WindowStyle
-          # Hidden alone is enough. Combining -NoNewWindow with -WindowStyle
-          # is a PowerShell parameter conflict.
-          Write-Host "Smoke-testing exe (5s timeout for top-level imports + uvicorn boot)…"
-          $proc = Start-Process -FilePath $exe -PassThru -WindowStyle Hidden
-          Start-Sleep -Seconds 5
-          if ($proc.HasExited -and $proc.ExitCode -ne 0) {
-            Write-Error "Hermes.exe crashed at startup with exit code $($proc.ExitCode)"
+          # ── Filesystem verification ───────────────────────────────────────
+          # PyInstaller "Failed to execute script" pop-up keeps the process
+          # alive past any timeout, so smoke-tests give false positives. The
+          # only reliable check is: did PyInstaller actually copy the package
+          # into _internal/? If httpx/ is missing as a folder, the bundle is
+          # broken regardless of what `pip list` showed.
+          $internalDir = "dist\Hermes\_internal"
+          if (-not (Test-Path $internalDir)) {
+            Write-Error "_internal/ folder missing — PyInstaller did not produce a valid onedir bundle."
             exit 1
           }
-          if (-not $proc.HasExited) {
-            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-            Write-Host "Smoke-test passed (exe stayed alive 5s without crashing)."
+          Write-Host ""
+          Write-Host "=== Verifying critical packages bundled into _internal/ ==="
+          # Each entry is "module-name | path-glob-under-_internal".
+          # Some packages flatten to a single .pyd (PIL→PIL/, jwt→jwt/) while
+          # others ship as proper packages — we glob to handle both.
+          $required = @(
+            @{Name = "httpx";             Path = "httpx"},
+            @{Name = "httpcore";          Path = "httpcore"},
+            @{Name = "fastapi";           Path = "fastapi"},
+            @{Name = "starlette";         Path = "starlette"},
+            @{Name = "uvicorn";           Path = "uvicorn"},
+            @{Name = "pydantic";          Path = "pydantic"},
+            @{Name = "pydantic_core";     Path = "pydantic_core"},
+            @{Name = "sqlalchemy";        Path = "sqlalchemy"},
+            @{Name = "aiosqlite";         Path = "aiosqlite"},
+            @{Name = "alembic";           Path = "alembic"},
+            @{Name = "cryptography";      Path = "cryptography"},
+            @{Name = "argon2";            Path = "argon2"},
+            @{Name = "jwt";               Path = "jwt"},
+            @{Name = "platformdirs";      Path = "platformdirs"},
+            @{Name = "websockets";        Path = "websockets"},
+            @{Name = "apscheduler";       Path = "apscheduler"},
+            @{Name = "pandas";            Path = "pandas"},
+            @{Name = "numpy";             Path = "numpy"},
+            @{Name = "scipy";             Path = "scipy"},
+            @{Name = "ccxt";              Path = "ccxt"},
+            @{Name = "optuna";            Path = "optuna"},
+            @{Name = "pywebpush";         Path = "pywebpush"},
+            @{Name = "qrcode";            Path = "qrcode"},
+            @{Name = "PIL";               Path = "PIL"},
+            @{Name = "webview";           Path = "webview"}
+          )
+          $missing = @()
+          foreach ($pkg in $required) {
+            $full = Join-Path $internalDir $pkg.Path
+            if (Test-Path $full) {
+              $count = (Get-ChildItem $full -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+              Write-Host ("  OK    {0,-20} ({1} files in _internal\{2}\)" -f $pkg.Name, $count, $pkg.Path)
+            } else {
+              Write-Host ("  MISS  {0,-20} (expected _internal\{1}\)" -f $pkg.Name, $pkg.Path)
+              $missing += $pkg.Name
+            }
           }
+          if ($missing.Count -gt 0) {
+            Write-Host ""
+            Write-Host "PyInstaller did not bundle these critical packages:"
+            $missing | ForEach-Object { Write-Host "  - $_" }
+            Write-Host ""
+            Write-Host "=== _internal/ contents (top-level dirs) ==="
+            Get-ChildItem $internalDir -Directory | Select-Object -First 50 | ForEach-Object { Write-Host "  $($_.Name)" }
+            Write-Error "Bundle incomplete — release would crash on user machine."
+            exit 1
+          }
+          Write-Host ""
+          Write-Host "=== Bundle size sanity check ==="
+          if ($folderSize -lt 80) {
+            Write-Warning "Hermes folder is $folderSize MB — expected 100-300 MB with full deps. Possible silent collect_all failure."
+          } else {
+            Write-Host "Hermes folder size $folderSize MB — looks healthy."
+          }
+          Write-Host ""
+          Write-Host "All critical packages bundled. Bundle verified."
 
       - name: Zip Hermes folder for portable distribution
         shell: pwsh
