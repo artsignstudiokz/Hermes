@@ -39,12 +39,14 @@ export const DOWNLOADS: Record<"windows" | "macos" | "linux", DownloadInfo> = {
     pending: COMING_SOON,
   },
   macos: {
-    url: COMING_SOON ? RELEASES : `https://github.com/${REPO}/releases/latest/download/Hermes.pkg`,
+    // Windows is the only supported platform for now — macOS is still
+    // in flight (PyInstaller .app + signing + notarization).
+    url: null,
     icon: "",
-    label: COMING_SOON ? "для macOS · скоро" : "для macOS",
+    label: "для macOS · скоро",
     ext: ".pkg",
-    size: COMING_SOON ? "—" : "~85 МБ",
-    pending: COMING_SOON,
+    size: "—",
+    pending: true,
   },
   linux: {
     url: null,
