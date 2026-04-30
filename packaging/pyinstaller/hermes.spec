@@ -13,6 +13,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = Path(SPECPATH).resolve().parent.parent  # noqa: F821
 BACKEND = ROOT / "backend"
+LEGACY = ROOT / "legacy"
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 ASSETS = ROOT / "packaging" / "windows" / "assets"
 
@@ -161,9 +162,20 @@ hidden_imports = sorted(set(hidden_imports))
 print(f"Final hidden_imports count: {len(hidden_imports)}")
 print("=" * 60)
 
+# Legacy GridStrategy modules — imported by app/core/strategy/runner.py via
+# bare `from config import …` style. Adding LEGACY to pathex makes
+# PyInstaller analyse and bundle them into the PYZ at top level, so the
+# bare imports resolve at runtime without sys.path hacks.
+LEGACY_MODULES = [
+    "backtester", "config", "data_manager", "indicators",
+    "mt5_connector", "optimizer", "reporting", "risk_manager",
+    "signal_generator", "strategy", "telegram_bot",
+]
+hidden_imports.extend(LEGACY_MODULES)
+
 a = Analysis(
     [str(ROOT / "desktop" / "main.py")],
-    pathex=[str(ROOT), str(BACKEND)],
+    pathex=[str(ROOT), str(BACKEND), str(LEGACY)],
     binaries=binaries,
     datas=datas,
     hiddenimports=hidden_imports,

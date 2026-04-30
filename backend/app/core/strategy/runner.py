@@ -21,9 +21,14 @@ from app.core.brokers.base import BrokerAdapter
 from app.core.brokers.models import Direction, OrderRequest, SymbolInfo
 
 # Make the legacy package importable for the strategy core.
-LEGACY_DIR = Path(__file__).resolve().parents[3].parent / "legacy"
-if LEGACY_DIR.exists() and str(LEGACY_DIR) not in sys.path:
-    sys.path.insert(0, str(LEGACY_DIR))
+# In a PyInstaller bundle, legacy modules are already on sys.path via the
+# PYZ archive (hermes.spec adds LEGACY to pathex), so we only need the
+# manual path manipulation in dev. parents[3] = backend/, .parent = repo
+# root, then /legacy gets us the dev source folder.
+if not getattr(sys, "frozen", False):
+    _LEGACY_DIR = Path(__file__).resolve().parents[3].parent / "legacy"
+    if _LEGACY_DIR.exists() and str(_LEGACY_DIR) not in sys.path:
+        sys.path.insert(0, str(_LEGACY_DIR))
 
 logger = logging.getLogger(__name__)
 

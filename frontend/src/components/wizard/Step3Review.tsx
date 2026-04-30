@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { useBrokers, useActivateBroker } from "@/api/useBrokers";
 import { useStrategyConfig } from "@/api/useStrategy";
 import { useStartTrading } from "@/api/useTrading";
+import { ApiError } from "@/lib/api";
+import { toast } from "@/lib/toast";
 
 interface Props {
   onPrev: () => void;
@@ -18,10 +20,21 @@ export function Step3Review({ onPrev, onDone }: Props) {
 
   const broker = brokers.data?.[0];
   const launch = async () => {
-    if (!broker) return;
-    if (!broker.is_active) await activate.mutateAsync(broker.id);
-    await start.mutateAsync(broker.id);
-    onDone();
+    if (!broker) {
+      toast.error("Брокер не настроен", "Вернитесь на шаг 1 и подключите счёт.");
+      return;
+    }
+    try {
+      if (!broker.is_active) await activate.mutateAsync(broker.id);
+      await start.mutateAsync(broker.id);
+      toast.success("Hermes запущен", "Боги торговли с вами.");
+      onDone();
+    } catch (err) {
+      const detail = err instanceof ApiError
+        ? `${err.status}: ${err.message}`
+        : err instanceof Error ? err.message : String(err);
+      toast.error("Не удалось запустить", detail);
+    }
   };
 
   return (

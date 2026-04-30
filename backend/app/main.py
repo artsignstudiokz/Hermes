@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+import traceback
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
@@ -47,6 +48,21 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         allow_origin_regex=r"https?://(127\.0\.0\.1|localhost)(:\d+)?",
     )
+
+    # Global handler so any unhandled exception is logged AND returned to
+    # the SPA with a useful message — otherwise a 500 in a frozen build is
+    # invisible (no console, uvicorn's logger doesn't propagate to file).
+    @app.exception_handler(Exception)
+    async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+        logger.error(
+            "Unhandled %s on %s %s: %s\n%s",
+            type(exc).__name__, request.method, request.url.path, exc,
+            traceback.format_exc(),
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"{type(exc).__name__}: {exc}"},
+        )
 
     # REST routers
     app.include_router(system.router, prefix="/api/system", tags=["system"])

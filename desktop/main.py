@@ -83,6 +83,11 @@ def _start_backend(port: int) -> threading.Thread:
                 log_level="info",
                 access_log=False,
                 lifespan="on",
+                # log_config=None lets uvicorn inherit our root logger (which
+                # has the file handler) instead of replacing it with its own
+                # in-memory config — otherwise startup errors and exception
+                # tracebacks vanish in --windowed builds.
+                log_config=None,
             )
             server = uvicorn.Server(config)
             server.run()

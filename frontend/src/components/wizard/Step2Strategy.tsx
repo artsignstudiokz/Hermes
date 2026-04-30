@@ -3,6 +3,8 @@ import { useState } from "react";
 
 import { usePresets, useSaveStrategy } from "@/api/useStrategy";
 import type { Preset, StrategyParams } from "@/api/types";
+import { ApiError } from "@/lib/api";
+import { toast } from "@/lib/toast";
 
 interface Props {
   onPrev: () => void;
@@ -40,8 +42,13 @@ export function Step2Strategy({ onPrev, onNext }: Props) {
   const onContinue = async () => {
     const preset = presets.data?.find((p) => p.id === chosen);
     if (!preset) return;
-    await save.mutateAsync({ ...DEFAULTS, ...(preset.payload as Partial<StrategyParams>) } as StrategyParams);
-    onNext();
+    try {
+      await save.mutateAsync({ ...DEFAULTS, ...(preset.payload as Partial<StrategyParams>) } as StrategyParams);
+      onNext();
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Не удалось сохранить стратегию", detail);
+    }
   };
 
   return (

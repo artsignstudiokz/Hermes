@@ -3,6 +3,8 @@ import { useState } from "react";
 
 import { useCreateBroker, useTestBroker, type BrokerCreateInput } from "@/api/useBrokers";
 import { useMt5Servers } from "@/api/useOnboarding";
+import { ApiError } from "@/lib/api";
+import { toast } from "@/lib/toast";
 
 interface Props {
   onPrev: () => void;
@@ -44,12 +46,18 @@ export function Step1Broker({ onPrev, onNext }: Props) {
 
   const onSave = async () => {
     const payload = buildPayload();
-    await create.mutateAsync({
-      ...payload,
-      name: name || `${type.toUpperCase()} ${login || apiKey?.slice(0, 6)}`.trim(),
-    });
-    setCreated(true);
-    onNext();
+    try {
+      await create.mutateAsync({
+        ...payload,
+        name: name || `${type.toUpperCase()} ${login || apiKey?.slice(0, 6)}`.trim(),
+      });
+      setCreated(true);
+      toast.success("Брокер сохранён");
+      onNext();
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Не удалось сохранить", detail);
+    }
   };
 
   const isMt5 = type === "mt5";
