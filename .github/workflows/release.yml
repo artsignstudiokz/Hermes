@@ -52,6 +52,9 @@ jobs:
         run: python scripts/generate_icons.py
         continue-on-error: true
 
+      - name: Generate license.rtf (encoding-safe)
+        run: python scripts/generate_license_rtf.py
+
       - name: PyInstaller bundle
         run: pyinstaller --noconfirm --clean packaging/pyinstaller/hermes.spec
 
