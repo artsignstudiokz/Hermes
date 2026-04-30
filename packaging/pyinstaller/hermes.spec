@@ -24,8 +24,11 @@ IS_MAC = sys.platform == "darwin"
 datas = []
 binaries = []
 hidden_imports = []
+# Frontend SPA destination MUST be `app/static/` so it matches
+# app.main._default_static_dir() = Path(__file__).parent / "static"
+# (which is _internal/app/static/ in the frozen bundle).
 if FRONTEND_DIST.exists():
-    datas.append((str(FRONTEND_DIST), "backend/app/static"))
+    datas.append((str(FRONTEND_DIST), "app/static"))
 if ASSETS.exists():
     datas.append((str(ASSETS), "packaging/windows/assets"))
 

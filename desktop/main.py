@@ -52,9 +52,12 @@ _BACKEND_ERROR: Exception | None = None
 def _start_backend(port: int) -> threading.Thread:
     """Run uvicorn in a daemon thread bound to 127.0.0.1:<port>."""
     # Tell the FastAPI app where the static frontend lives.
+    # Frozen bundle: _MEIPASS/app/static (set by hermes.spec datas).
+    # Dev: frontend/dist exists once `npm run build` was run.
     static_candidates = [
-        ROOT / "backend" / "app" / "static",  # production bundle
-        ROOT / "frontend" / "dist",  # dev bundle
+        ROOT / "app" / "static",
+        ROOT / "backend" / "app" / "static",
+        ROOT / "frontend" / "dist",
     ]
     for cand in static_candidates:
         if cand.exists():

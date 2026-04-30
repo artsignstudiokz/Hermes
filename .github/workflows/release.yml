@@ -197,6 +197,21 @@ jobs:
             exit 1
           }
           Write-Host ""
+          Write-Host "=== Frontend SPA bundled? ==="
+          $indexHtml = "$internalDir\app\static\index.html"
+          if (-not (Test-Path $indexHtml)) {
+            Write-Host "  MISS  $indexHtml"
+            Write-Host ""
+            Write-Host "Frontend SPA was not bundled into _internal/app/static/."
+            Write-Host "Check that 'npm run build' produced frontend/dist/ AND that hermes.spec"
+            Write-Host "datas points to 'app/static' (not 'backend/app/static')."
+            Write-Error "Bundle incomplete — installed app would open empty 404."
+            exit 1
+          }
+          $assetsDir = "$internalDir\app\static\assets"
+          $assetCount = if (Test-Path $assetsDir) { (Get-ChildItem $assetsDir -File).Count } else { 0 }
+          Write-Host "  OK    index.html present, $assetCount asset files in assets/"
+          Write-Host ""
           Write-Host "=== Bundle size sanity check ==="
           if ($folderSize -lt 80) {
             Write-Warning "Hermes folder is $folderSize MB — expected 100-300 MB with full deps. Possible silent collect_all failure."
@@ -204,7 +219,7 @@ jobs:
             Write-Host "Hermes folder size $folderSize MB — looks healthy."
           }
           Write-Host ""
-          Write-Host "All critical packages bundled. Bundle verified."
+          Write-Host "All critical packages bundled + SPA bundled. Bundle verified."
 
       - name: Zip Hermes folder for portable distribution
         shell: pwsh
