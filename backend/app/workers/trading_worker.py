@@ -163,15 +163,21 @@ class TradingWorker:
             "balance": account.balance,
             "margin": account.margin,
         })
+        # Field names MUST match PositionOut schema — frontend writes the
+        # WS payload directly into the ["positions"] react-query cache, so
+        # any drift (lots vs lot_size, swap missing, etc.) → undefined →
+        # `.toFixed` crash in PositionsTable.
         await self._ws.broadcast("positions", [
             {
                 "ticket": p.ticket,
                 "symbol": p.symbol,
                 "direction": p.direction.value,
-                "lots": p.lot_size,
+                "lot_size": p.lot_size,
                 "entry_price": p.entry_price,
                 "current_price": p.current_price,
                 "unrealized_pnl": p.unrealized_pnl,
+                "swap": p.swap,
+                "commission": p.commission,
                 "opened_at": p.opened_at.isoformat(),
             }
             for p in positions

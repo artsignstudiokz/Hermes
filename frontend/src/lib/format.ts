@@ -18,22 +18,23 @@ const pctFmt = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 2,
 });
 
-export function formatMoney(n: number, currency: string = "USD"): string {
-  const sign = n < 0 ? "−" : "";
+export function formatMoney(n: number | null | undefined, currency: string = "USD"): string {
+  const v = n ?? 0;
+  const sign = v < 0 ? "−" : "";
   const symbol = currency === "USD" ? "$" : "";
-  return `${sign}${symbol}${moneyFmt.format(Math.abs(n))}`;
+  return `${sign}${symbol}${moneyFmt.format(Math.abs(v))}`;
 }
 
-export function formatCompact(n: number): string {
-  return compactFmt.format(n);
+export function formatCompact(n: number | null | undefined): string {
+  return compactFmt.format(n ?? 0);
 }
 
-export function formatPct(ratio: number): string {
-  return pctFmt.format(ratio);
+export function formatPct(ratio: number | null | undefined): string {
+  return pctFmt.format(ratio ?? 0);
 }
 
-export function formatPips(pips: number): string {
-  return `${pips.toFixed(1)} п.`;
+export function formatPips(pips: number | null | undefined): string {
+  return `${(pips ?? 0).toFixed(1)} п.`;
 }
 
 export function formatDateTime(iso: string | Date): string {

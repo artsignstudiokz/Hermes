@@ -122,14 +122,14 @@ export function Trades() {
                       {t.direction === "long" ? "Long" : "Short"}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right number">{t.lots.toFixed(2)}</td>
-                  <td className="px-3 py-2 text-right number">{t.entry_price.toFixed(5)}</td>
+                  <td className="px-3 py-2 text-right number">{(t.lots ?? 0).toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right number">{(t.entry_price ?? 0).toFixed(5)}</td>
                   <td className="px-3 py-2 text-right number">
-                    {t.exit_price ? t.exit_price.toFixed(5) : "—"}
+                    {t.exit_price != null ? t.exit_price.toFixed(5) : "—"}
                   </td>
                   <td
                     className={`px-3 py-2 text-right number ${
-                      t.pnl >= 0 ? "text-hermes-laurel" : "text-hermes-wine"
+                      (t.pnl ?? 0) >= 0 ? "text-hermes-laurel" : "text-hermes-wine"
                     }`}
                   >
                     {formatMoney(t.pnl)}

@@ -76,15 +76,15 @@ export function PositionsTable({ positions, loading }: Props) {
                   {p.direction === "long" ? "Long" : "Short"}
                 </span>
               </td>
-              <td className="px-3 py-3 text-right number">{p.lot_size.toFixed(2)}</td>
-              <td className="px-3 py-3 text-right number">{p.entry_price.toFixed(5)}</td>
-              <td className="px-3 py-3 text-right number">{p.current_price.toFixed(5)}</td>
+              <td className="px-3 py-3 text-right number">{(p.lot_size ?? 0).toFixed(2)}</td>
+              <td className="px-3 py-3 text-right number">{(p.entry_price ?? 0).toFixed(5)}</td>
+              <td className="px-3 py-3 text-right number">{(p.current_price ?? 0).toFixed(5)}</td>
               <td
                 className={`px-3 py-3 text-right number font-medium ${
-                  p.unrealized_pnl >= 0 ? "text-hermes-laurel" : "text-hermes-wine"
+                  (p.unrealized_pnl ?? 0) >= 0 ? "text-hermes-laurel" : "text-hermes-wine"
                 }`}
               >
-                {formatMoney(p.unrealized_pnl)}
+                {formatMoney(p.unrealized_pnl ?? 0)}
               </td>
               <td className="px-3 py-3 text-xs text-muted-foreground">
                 {formatDateTime(p.opened_at)}
