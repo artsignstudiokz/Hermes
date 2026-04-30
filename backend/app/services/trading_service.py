@@ -39,10 +39,11 @@ class TradingService:
     @property
     def status(self) -> dict:
         # Worker is always a dict so consumers can do .get("running") safely
-        # without a None-check. _IDLE_STATE matches TradingWorker.state shape.
+        # without a None-check. Shape matches TradingWorker.state exactly.
         worker_state = self._worker.state if self._worker else {
             "running": False,
             "paused": False,
+            "trading_enabled": False,
             "last_tick": None,
             "tick_count": 0,
             "last_error": None,
@@ -124,6 +125,46 @@ class TradingService:
         if not self._worker:
             return 0
         return await self._worker.kill_switch()
+
+    def enable_trading(self) -> dict:
+        if self._worker is None:
+            raise ValueError("Trading worker not started — click Start first")
+        self._worker.enable_trading()
+        return self.status
+
+    def disable_trading(self) -> dict:
+        if self._worker is None:
+            raise ValueError("Trading worker not started")
+        self._worker.disable_trading()
+        return self.status
+
+    async def manual_open(
+        self, symbol: str, direction: str, lot_size: float, comment: str = "manual_test",
+    ) -> dict:
+        """Place a single test order regardless of trading_enabled.
+
+        Used by the "Тестовая сделка" button so the operator can verify
+        broker connectivity / order routing without flipping the bot's
+        trading toggle on. Bypasses the strategy entirely.
+        """
+        from app.core.brokers.models import Direction, OrderRequest
+
+        adapter = self._registry.get_active()
+        if adapter is None:
+            raise ValueError("No active broker — connect one first")
+        d = Direction.LONG if direction.lower() == "long" else Direction.SHORT
+        order = await adapter.place_order(OrderRequest(
+            symbol=symbol, direction=d, lot_size=lot_size, comment=comment,
+        ))
+        if order is None:
+            raise ValueError(f"Broker rejected the order for {symbol}")
+        return {
+            "ticket": order.ticket,
+            "symbol": symbol,
+            "direction": direction,
+            "lot_size": lot_size,
+            "entry_price": getattr(order, "entry_price", None),
+        }
 
     async def _active_strategy(self, session: AsyncSession) -> StrategyConfigRow | None:
         result = await session.execute(

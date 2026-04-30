@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Activity, ArrowUpRight, Coins, Pause, Play, Power, ShieldAlert, TrendingUp } from "lucide-react";
+import { Activity, ArrowUpRight, Coins, FlaskConical, Pause, Play, Power, ShieldAlert, TrendingUp, Zap, ZapOff } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAccount, useEquityHistory, useTradingStatus } from "@/api/useAccount";
@@ -7,13 +8,18 @@ import { useBrokers } from "@/api/useBrokers";
 import { usePositions } from "@/api/usePositions";
 import { useTradeStats } from "@/api/useTrades";
 import {
+  useDisableTrading,
+  useEnableTrading,
   usePauseTrading,
   useResumeTrading,
   useStartTrading,
   useStopTrading,
+  useTestOrder,
 } from "@/api/useTrading";
 import { useStrategyConfig } from "@/api/useStrategy";
 import { useRegime } from "@/api/useAdaptive";
+import { ApiError } from "@/lib/api";
+import { toast } from "@/lib/toast";
 import { EquityChart } from "@/components/charts/EquityChart";
 import { RegimeBadge } from "@/components/charts/RegimeBadge";
 import { PositionsTable } from "@/components/tables/PositionsTable";
@@ -42,9 +48,14 @@ export function Dashboard() {
   const stop = useStopTrading();
   const pause = usePauseTrading();
   const resume = useResumeTrading();
+  const enableTrading = useEnableTrading();
+  const disableTrading = useDisableTrading();
+  const testOrder = useTestOrder();
+  const [testBusy, setTestBusy] = useState(false);
 
   const running = status.data?.worker?.running ?? false;
   const paused = status.data?.worker?.paused ?? false;
+  const tradingOn = status.data?.worker?.trading_enabled ?? false;
 
   const stopPct = (config.data?.payload?.stop_drawdown_pct ?? 10) / 100;
   const hardPct = (config.data?.payload?.max_portfolio_drawdown_pct ?? 20) / 100;
@@ -68,6 +79,33 @@ export function Dashboard() {
 
   const primaryLabel = !running ? "Запустить" : paused ? "Возобновить" : "Пауза";
   const PrimaryIcon = !running ? Power : paused ? Play : Pause;
+
+  const onToggleTrading = async () => {
+    try {
+      if (tradingOn) await disableTrading.mutateAsync();
+      else await enableTrading.mutateAsync();
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Не удалось переключить торговлю", detail);
+    }
+  };
+
+  const onTestOrder = async () => {
+    if (!activeBroker) return;
+    const symbol = config.data?.payload.symbols?.[0] ?? "EURUSD";
+    setTestBusy(true);
+    try {
+      const r = await testOrder.mutateAsync({
+        symbol, direction: "long", lot_size: 0.01, comment: "manual_test",
+      });
+      toast.success("Тестовая сделка открыта", `${r.symbol} long 0.01 · ticket ${r.ticket}`);
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Тест не удался", detail);
+    } finally {
+      setTestBusy(false);
+    }
+  };
 
   return (
     <motion.div
@@ -117,13 +155,38 @@ export function Dashboard() {
                 <PrimaryIcon size={16} /> {primaryLabel}
               </button>
               {running && (
-                <button
-                  onClick={() => stop.mutate()}
-                  disabled={stop.isPending}
-                  className="rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition"
-                >
-                  Остановить
-                </button>
+                <>
+                  <button
+                    onClick={onToggleTrading}
+                    disabled={enableTrading.isPending || disableTrading.isPending}
+                    title={tradingOn
+                      ? "Бот сейчас открывает реальные сделки. Нажмите чтобы вернуться в режим наблюдения."
+                      : "Бот наблюдает за рынком, но не торгует. Нажмите чтобы разрешить открытие реальных сделок."}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-wider transition disabled:opacity-50 ${
+                      tradingOn
+                        ? "border border-hermes-laurel/50 bg-hermes-laurel/15 text-hermes-laurel hover:bg-hermes-laurel/25"
+                        : "border border-hermes-gold/40 bg-hermes-alabaster text-muted-foreground hover:bg-hermes-parchment"
+                    }`}
+                  >
+                    {tradingOn ? <Zap size={14} /> : <ZapOff size={14} />}
+                    {tradingOn ? "Торговля: ВКЛ" : "Только наблюдение"}
+                  </button>
+                  <button
+                    onClick={onTestOrder}
+                    disabled={testBusy}
+                    title="Открыть пробную сделку 0.01 лота для проверки соединения с брокером."
+                    className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition disabled:opacity-50"
+                  >
+                    <FlaskConical size={14} /> Тест-сделка
+                  </button>
+                  <button
+                    onClick={() => stop.mutate()}
+                    disabled={stop.isPending}
+                    className="rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition"
+                  >
+                    Остановить
+                  </button>
+                </>
               )}
             </>
           )

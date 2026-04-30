@@ -1,7 +1,16 @@
 /**
  * WebSocket client with auto-reconnect (exponential backoff, capped).
  * Used for /ws/positions, /ws/equity, /ws/signals, /ws/logs.
+ *
+ * Subscriptions are reference-counted with a linger window: when the
+ * last consumer unsubscribes we wait LINGER_MS before actually closing
+ * the socket. If a new subscriber arrives in that window we cancel the
+ * close and keep the same socket — this prevents an open/close/open
+ * storm when React quickly remounts components (Strict Mode in dev,
+ * Suspense boundaries, route transitions).
  */
+
+const LINGER_MS = 1500;
 
 export type WsTopic = "positions" | "equity" | "signals" | "logs" | "prices";
 
@@ -13,6 +22,7 @@ interface Subscription {
   socket: WebSocket | null;
   reconnectAttempts: number;
   reconnectTimer: number | null;
+  lingerTimer: number | null;
   closing: boolean;
 }
 
@@ -64,20 +74,32 @@ export function subscribe<T = unknown>(topic: WsTopic, listener: Listener<T>): (
       socket: null,
       reconnectAttempts: 0,
       reconnectTimer: null,
+      lingerTimer: null,
       closing: false,
     };
     subs.set(topic, sub);
   }
+  // A new subscriber cancels any pending linger-close from a previous
+  // unsubscribe, so transient remounts don't tear down the socket.
+  if (sub.lingerTimer != null) {
+    window.clearTimeout(sub.lingerTimer);
+    sub.lingerTimer = null;
+  }
+  sub.closing = false;
   sub.listeners.add(listener as Listener<unknown>);
   if (!sub.socket) connect(sub);
 
   return () => {
     sub!.listeners.delete(listener as Listener<unknown>);
-    if (sub!.listeners.size === 0) {
-      sub!.closing = true;
-      if (sub!.reconnectTimer != null) window.clearTimeout(sub!.reconnectTimer);
-      sub!.socket?.close();
-      subs.delete(topic);
+    if (sub!.listeners.size === 0 && sub!.lingerTimer == null) {
+      sub!.lingerTimer = window.setTimeout(() => {
+        sub!.lingerTimer = null;
+        if (sub!.listeners.size > 0) return;   // resubscribed in time
+        sub!.closing = true;
+        if (sub!.reconnectTimer != null) window.clearTimeout(sub!.reconnectTimer);
+        sub!.socket?.close();
+        subs.delete(topic);
+      }, LINGER_MS);
     }
   };
 }

@@ -112,10 +112,26 @@ export interface TradingStatus {
   worker: {
     running: boolean;
     paused: boolean;
+    trading_enabled: boolean;
     last_tick: string | null;
     tick_count: number;
     last_error: string | null;
   } | null;
+}
+
+export interface ManualOrderInput {
+  symbol: string;
+  direction: "long" | "short";
+  lot_size: number;
+  comment?: string;
+}
+
+export interface ManualOrderResult {
+  ticket: string;
+  symbol: string;
+  direction: string;
+  lot_size: number;
+  entry_price: number | null;
 }
 
 export interface TradeStats {

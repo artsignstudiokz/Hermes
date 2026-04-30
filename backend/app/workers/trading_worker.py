@@ -46,39 +46,51 @@ class TradingWorker:
         self._last_tick: datetime | None = None
         self._last_error: str | None = None
         self._tick_count = 0
-        # First tick after start runs in observation-only mode: it picks
-        # up any positions already open on the broker, snapshots equity,
-        # but does NOT call strategy.on_bar — so the bot doesn't slam new
-        # orders the second the user clicks Start. From the second tick
-        # onward, the strategy runs normally.
-        self._observe_only_first_tick = True
+        # Whether the worker is allowed to actually place / close orders.
+        # Default: False — the user clicks Start to begin observing the
+        # market (sync existing positions, evaluate regime, save snapshots),
+        # then explicitly toggles trading ON via /api/trading/enable-trading
+        # when they're ready. This decouples "watch the market" from
+        # "open positions" so the bot doesn't slam orders the moment Start
+        # is pressed.
+        self._trading_enabled = False
 
     @property
     def state(self) -> dict:
         return {
             "running": self._task is not None and not self._task.done(),
             "paused": self._paused,
+            "trading_enabled": self._trading_enabled,
             "last_tick": self._last_tick.isoformat() if self._last_tick else None,
             "tick_count": self._tick_count,
             "last_error": self._last_error,
         }
+
+    def enable_trading(self) -> None:
+        self._trading_enabled = True
+        logger.info("Live trading enabled for account %d", self._account_id)
+
+    def disable_trading(self) -> None:
+        self._trading_enabled = False
+        logger.info("Live trading disabled for account %d", self._account_id)
 
     async def start(self) -> None:
         if self._task and not self._task.done():
             return
         await self._runner.setup()
         self._stop_evt.clear()
-        self._observe_only_first_tick = True
         # Seed an immediate observation tick so existing broker positions
-        # show up on the Dashboard at once. Strategy logic stays inhibited
-        # for this one — see _observe_only_first_tick above.
+        # and balance show up on the Dashboard at once.
         sm = get_sessionmaker()
         try:
             await self._tick(sm)
         except Exception:
             logger.exception("Initial observation tick failed (will retry on schedule)")
         self._task = asyncio.create_task(self._run(), name="hermes-trading-worker")
-        logger.info("Trading worker started for account %d", self._account_id)
+        logger.info(
+            "Trading worker started for account %d (trading_enabled=%s)",
+            self._account_id, self._trading_enabled,
+        )
 
     async def stop(self) -> None:
         self._stop_evt.set()
@@ -132,12 +144,15 @@ class TradingWorker:
             raise
 
     async def _tick(self, sm) -> None:
-        if self._observe_only_first_tick:
-            actions: list[dict] = []
-            self._observe_only_first_tick = False
-            logger.info("Initial observation tick — syncing broker state without trading")
-        else:
+        # When trading is disabled, the runner still pulls market data and
+        # evaluates the strategy in dry-run mode — but the actual broker
+        # call is suppressed. This way the user can keep "Запустить" on
+        # to watch regime/equity update in real time, then toggle trading
+        # on when they're satisfied.
+        if self._trading_enabled:
             actions = await self._runner.tick()
+        else:
+            actions = await self._runner.tick(dry_run=True)
         self._last_tick = datetime.now(timezone.utc)
         self._tick_count += 1
 

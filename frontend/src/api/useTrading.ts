@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
-import type { TradingStatus } from "./types";
+import type { ManualOrderInput, ManualOrderResult, TradingStatus } from "./types";
 
 export function useStartTrading() {
   const qc = useQueryClient();
@@ -45,6 +45,34 @@ export function useKillSwitch() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["positions"] });
       qc.invalidateQueries({ queryKey: ["trading-status"] });
+    },
+  });
+}
+
+export function useEnableTrading() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<TradingStatus>("/api/trading/enable-trading"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trading-status"] }),
+  });
+}
+
+export function useDisableTrading() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<TradingStatus>("/api/trading/disable-trading"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trading-status"] }),
+  });
+}
+
+export function useTestOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ManualOrderInput) =>
+      api.post<ManualOrderResult, ManualOrderInput>("/api/trading/test-order", input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["positions"] });
+      qc.invalidateQueries({ queryKey: ["account"] });
     },
   });
 }

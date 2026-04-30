@@ -128,6 +128,8 @@ async def delete_broker(
 async def activate_broker(
     broker_id: int,
     session: AsyncSession = Depends(get_db_session),
+    registry: BrokerRegistry = Depends(get_broker_registry),
+    vault: CredentialVault = Depends(require_unlocked_vault),
 ) -> BrokerOut:
     row = await session.get(BrokerAccount, broker_id)
     if not row:
@@ -140,6 +142,10 @@ async def activate_broker(
         o.is_active = False
     row.is_active = True
     await session.commit()
+    # Eagerly connect through the registry so the dashboard can render
+    # balance/positions immediately — without this the user sees an empty
+    # account card until they hit "Запустить", which is misleading.
+    await registry.connect_from_db(broker_id, vault, session)
     return BrokerOut(
         id=row.id, type=row.type, name=row.name, server=row.server, login=row.login,
         is_active=row.is_active, is_testnet=row.is_testnet,

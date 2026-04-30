@@ -104,8 +104,15 @@ class StrategyRunner:
             commission_per_lot=self._commission,
         )
 
-    async def tick(self) -> list[dict]:
-        """Run one analysis cycle. Returns list of actions executed."""
+    async def tick(self, dry_run: bool = False) -> list[dict]:
+        """Run one analysis cycle. Returns list of actions executed.
+
+        When dry_run is True, the strategy still evaluates indicators,
+        regime, and signals — actions are tagged with action["dry_run"]=True
+        and broadcast to the SPA so the user can see *would-be* trades —
+        but no order is sent to the broker. Use this to watch the bot's
+        decision-making before flipping live trading on.
+        """
         if self._strategy is None:
             await self.setup()
 
@@ -150,6 +157,12 @@ class StrategyRunner:
 
         executed: list[dict] = []
         for action in actions:
+            if dry_run:
+                action["dry_run"] = True
+                executed.append(action)
+                if self._on_action:
+                    self._on_action(action)
+                continue
             if action["action"] == "open":
                 direction = Direction.LONG if action["direction"] == "long" else Direction.SHORT
                 order = await self._adapter.place_order(OrderRequest(

@@ -9,9 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 from app.core.brokers.base import BrokerAdapter
 from app.core.brokers.models import BrokerCredentials, BrokerType
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.core.security.vault import CredentialVault
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +74,47 @@ class BrokerRegistry:
             if account_id not in self._adapters:
                 raise KeyError(f"No adapter connected for account {account_id}")
             self._active_id = account_id
+
+    async def connect_from_db(
+        self, account_id: int, vault: "CredentialVault", session: "AsyncSession",
+    ) -> BrokerAdapter | None:
+        """Look up a saved BrokerAccount + its vault creds and connect.
+
+        Used right after activation so the dashboard can show balance,
+        positions, etc. without waiting for trading to start. Returns
+        None gracefully if the account row, vault entry, or connection
+        attempt fails — caller decides how to surface that to the UI.
+        """
+        from app.db.models import BrokerAccount  # local import to avoid cycle
+
+        account = await session.get(BrokerAccount, account_id)
+        if account is None:
+            logger.warning("connect_from_db: BrokerAccount %d not found", account_id)
+            return None
+        creds_payload = vault.get(account.vault_key)
+        if creds_payload is None:
+            logger.warning(
+                "connect_from_db: no creds in vault for account %d (key=%s)",
+                account_id, account.vault_key,
+            )
+            return None
+        creds = BrokerCredentials(
+            type=BrokerType(account.type),
+            server=account.server,
+            login=int(account.login) if account.login else None,
+            password=creds_payload.get("password"),
+            api_key=creds_payload.get("api_key"),
+            api_secret=creds_payload.get("api_secret"),
+            api_passphrase=creds_payload.get("api_passphrase"),
+            testnet=account.is_testnet,
+        )
+        try:
+            adapter = await self.connect(account_id, creds)
+            await self.set_active(account_id)
+            return adapter
+        except Exception:  # noqa: BLE001
+            logger.exception("connect_from_db: connect failed for account %d", account_id)
+            return None
 
     def _build(self, creds: BrokerCredentials) -> BrokerAdapter:
         if creds.type == BrokerType.MT5:
