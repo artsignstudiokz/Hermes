@@ -9,19 +9,26 @@ export default {
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       colors: {
-        marble:    "#FBF7EC",
-        ivory:     "#F4ECD8",
-        parchment: "#EFE5C8",
-        alabaster: "#FAF6EC",
-        gold:      "#C9A96E",
-        "gold-deep": "#A8884F",
-        "gold-light": "#E5CB91",
-        bronze:    "#8B6F3E",
+        // Sharper palette — ~6% contrast between bg and card so the
+        // marble cards stop bleeding into the parchment background, and
+        // a deeper gold gradient (royal yellow → muted amber) for the
+        // luxury/premium feel.
+        marble:    "#F1E9D2",
+        ivory:     "#FFFCF1",
+        parchment: "#E8DEC0",
+        alabaster: "#FFFCF1",
+        gold:      "#D4AF37",
+        "gold-deep": "#9B7B2D",
+        "gold-light": "#F4D783",
+        bronze:    "#7A5A1E",
         olive:     "#6B7C4F",
-        laurel:    "#7E8B5A",
-        wine:      "#7A1B27",
-        aegean:    "#2E4F6F",
-        ink:       "#2A2520",
+        laurel:    "#5B7A3E",
+        wine:      "#8B2C2C",
+        aegean:    "#234A6A",
+        ink:       "#1A150F",
+        "ink-2":   "#4F4536",
+        "ink-3":   "#6E6450",
+        "ink-4":   "#8A7E66",
       },
       animation: {
         "wing-flutter": "wing-flutter 2.8s ease-in-out infinite",
@@ -40,7 +47,7 @@ export default {
           "50%": {
             opacity: "0.95",
             boxShadow:
-              "0 0 0 1px rgba(201, 169, 110, 0.18), 0 0 36px -4px rgba(201, 169, 110, 0.4)",
+              "0 0 0 1px rgba(155, 123, 45, 0.22), 0 0 40px -4px rgba(212, 175, 55, 0.45)",
           },
         },
         "coin-spin": {
