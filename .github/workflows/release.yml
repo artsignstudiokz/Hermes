@@ -58,7 +58,7 @@ jobs:
       - name: PyInstaller bundle
         run: pyinstaller --noconfirm --clean packaging/pyinstaller/hermes.spec
 
-      - name: Verify Hermes.exe
+      - name: Verify Hermes.exe (smoke-test imports)
         shell: pwsh
         run: |
           if (-not (Test-Path "dist\Hermes.exe")) {
@@ -67,6 +67,20 @@ jobs:
           }
           $size = (Get-Item "dist\Hermes.exe").Length / 1MB
           Write-Host "Hermes.exe size: $([math]::Round($size, 1)) MB"
+
+          # Boot the exe headless and kill it — surfaces missing-module errors
+          # in the CI log instead of in the user's installer wizard.
+          Write-Host "Smoke-testing exe (3s timeout — long enough for runtime_hook + main.py top-level imports)..."
+          $proc = Start-Process -FilePath "dist\Hermes.exe" -PassThru -NoNewWindow -WindowStyle Hidden
+          Start-Sleep -Seconds 3
+          if ($proc.HasExited -and $proc.ExitCode -ne 0) {
+            Write-Error "Hermes.exe crashed at startup with exit code $($proc.ExitCode)"
+            exit 1
+          }
+          if (-not $proc.HasExited) {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            Write-Host "Smoke-test passed (exe stayed alive 3s without crashing)."
+          }
 
       - name: Set up Inno Setup
         run: choco install innosetup -y --no-progress

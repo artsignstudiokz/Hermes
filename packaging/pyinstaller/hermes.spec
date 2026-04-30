@@ -32,25 +32,54 @@ if ASSETS.exists():
 # ── collect_all for packages that have data files / dynamic submodules ───
 # These are notoriously hard for PyInstaller's static analysis to fully
 # pick up. Using collect_all walks the package tree and adds everything.
-for pkg in (
-    "platformdirs",
-    "ccxt",
+COLLECT_ALL_PKGS = (
+    # HTTP stack — main.py imports httpx directly; uvicorn/fastapi pull
+    # in starlette + websockets + h11 + anyio + sniffio under the hood.
+    "httpx",
+    "httpcore",
+    "h11",
+    "h2",
+    "anyio",
+    "sniffio",
+    "certifi",
+    "idna",
     "uvicorn",
     "fastapi",
     "starlette",
+    "websockets",
+    # Settings / models / serialization.
     "pydantic",
     "pydantic_settings",
+    "pydantic_core",
+    # Storage.
+    "sqlalchemy",
+    "aiosqlite",
+    "alembic",
+    # Security.
     "argon2",
+    "cryptography",
+    "jwt",
+    # Trading + ML.
+    "ccxt",
+    "optuna",
+    "pandas",
+    "numpy",
+    "scipy",
+    # Notifications + tunnel.
     "pywebpush",
     "py_vapid",
     "qrcode",
     "PIL",
-    "apscheduler",
-    "optuna",
-    "sqlalchemy",
     "pyngrok",
+    # Scheduler.
+    "apscheduler",
+    # Misc.
+    "platformdirs",
     "webview",
-):
+    "multipart",
+)
+
+for pkg in COLLECT_ALL_PKGS:
     try:
         d, b, h = collect_all(pkg)
         datas.extend(d)
@@ -144,10 +173,24 @@ excludes = [
 ]
 
 # Add submodules from packages that frequently miss their dynamic imports.
-hidden_imports.extend(collect_submodules("platformdirs"))
-hidden_imports.extend(collect_submodules("pydantic"))
-hidden_imports.extend(collect_submodules("pydantic_settings"))
-hidden_imports.extend(collect_submodules("argon2"))
+for sub_pkg in (
+    "platformdirs",
+    "pydantic",
+    "pydantic_settings",
+    "argon2",
+    "httpx",
+    "httpcore",
+    "anyio",
+    "uvicorn",
+    "starlette",
+    "websockets",
+    "sqlalchemy",
+    "alembic",
+):
+    try:
+        hidden_imports.extend(collect_submodules(sub_pkg))
+    except Exception:
+        pass
 
 a = Analysis(
     [str(ROOT / "desktop" / "main.py")],
