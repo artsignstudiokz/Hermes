@@ -15,7 +15,8 @@
 const REPO = "artsignstudiokz/Hermes";
 
 // Flip to `false` once CI has published the first installer build.
-const COMING_SOON = true;
+// v1.0.0 is now live on GitHub Releases — direct download enabled.
+const COMING_SOON = false;
 
 const RELEASES = `https://github.com/${REPO}/releases`;
 
