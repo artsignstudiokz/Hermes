@@ -40,6 +40,22 @@ jobs:
           pip install --prefer-binary -e "backend[desktop]"
           pip install pyinstaller pillow
 
+      - name: Diagnose installed packages (sanity check)
+        shell: pwsh
+        run: |
+          Write-Host "=== Critical packages must be importable ==="
+          $modules = @("httpx", "platformdirs", "uvicorn", "fastapi", "pydantic", "argon2",
+                       "ccxt", "webview", "sqlalchemy", "aiosqlite", "pywebpush", "qrcode",
+                       "apscheduler", "scipy", "pandas", "numpy", "optuna", "cryptography", "jwt")
+          foreach ($m in $modules) {
+            $check = python -c "import $m; print(getattr($m, '__version__', '?'))" 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "  OK  $m  $check"
+            } else {
+              Write-Error "  FAIL  $m  → $check"
+            }
+          }
+
       - name: Install frontend
         working-directory: frontend
         run: npm ci

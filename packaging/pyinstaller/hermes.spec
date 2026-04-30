@@ -1,9 +1,8 @@
 # PyInstaller spec for Hermes (BAI Core).
 # Build:  pyinstaller packaging/pyinstaller/hermes.spec
 #
-# Single console-less .exe that bundles the FastAPI backend, the React
-# frontend (frontend/dist), and PyWebView. Windows: dist/Hermes.exe.
-# macOS:   dist/Hermes.app via the `--windowed` flag in build_app.sh.
+# onedir mode — produces dist/Hermes/ folder with Hermes.exe + all DLLs/PYDs.
+# Inno Setup ships the whole folder so install UX is unchanged for the user.
 
 # -*- mode: python ; coding: utf-8 -*-
 
@@ -12,7 +11,7 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
-ROOT = Path(SPECPATH).resolve().parent.parent  # noqa: F821 (SPECPATH defined by PyInstaller)
+ROOT = Path(SPECPATH).resolve().parent.parent  # noqa: F821
 BACKEND = ROOT / "backend"
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 ASSETS = ROOT / "packaging" / "windows" / "assets"
@@ -24,25 +23,31 @@ IS_MAC = sys.platform == "darwin"
 # ── Bundled data ──────────────────────────────────────────────────────────
 datas = []
 binaries = []
+hidden_imports = []
 if FRONTEND_DIST.exists():
     datas.append((str(FRONTEND_DIST), "backend/app/static"))
 if ASSETS.exists():
     datas.append((str(ASSETS), "packaging/windows/assets"))
 
-# ── collect_all for packages that have data files / dynamic submodules ───
-# These are notoriously hard for PyInstaller's static analysis to fully
-# pick up. Using collect_all walks the package tree and adds everything.
+# ── collect_all walks the whole package tree, finds:
+#     - data files (datas)
+#     - binary files like .so / .pyd (binaries)
+#     - submodules to mark as hidden imports (hiddenimports)
+#
+# CRITICAL: we MUST extend hidden_imports with the result, not discard it!
+# The previous version of this spec dropped the `h` return value silently,
+# which is why httpx kept "missing" at runtime even after being listed here.
+
 COLLECT_ALL_PKGS = (
-    # HTTP stack — main.py imports httpx directly; uvicorn/fastapi pull
-    # in starlette + websockets + h11 + anyio + sniffio under the hood.
+    # HTTP stack — main.py imports httpx directly.
     "httpx",
     "httpcore",
     "h11",
-    "h2",
     "anyio",
     "sniffio",
     "certifi",
     "idna",
+    # Web server.
     "uvicorn",
     "fastapi",
     "starlette",
@@ -76,121 +81,82 @@ COLLECT_ALL_PKGS = (
     # Misc.
     "platformdirs",
     "webview",
-    "multipart",
 )
+
+# h2 is optional — depends on httpx version. Try collect_all but don't crash if missing.
+OPTIONAL_PKGS = ("h2", "multipart", "python_multipart")
+
+print("=" * 60)
+print("Hermes spec: collect_all phase")
+print("=" * 60)
 
 for pkg in COLLECT_ALL_PKGS:
     try:
         d, b, h = collect_all(pkg)
         datas.extend(d)
         binaries.extend(b)
+        hidden_imports.extend(h)
+        print(f"  collect_all('{pkg}'): {len(d)} data, {len(b)} binaries, {len(h)} hidden")
+    except Exception as e:
+        print(f"  WARN  collect_all('{pkg}') failed: {type(e).__name__}: {e}")
+
+for pkg in OPTIONAL_PKGS:
+    try:
+        d, b, h = collect_all(pkg)
+        datas.extend(d)
+        binaries.extend(b)
+        hidden_imports.extend(h)
+        print(f"  optional collect_all('{pkg}'): {len(h)} hidden")
     except Exception:
-        # Package may not be installed (e.g. webview on macOS via different name).
         pass
 
-# ── Hidden imports (only those PyInstaller's static analysis misses) ──────
-hidden_imports = [
-    # Web stack
-    "uvicorn",
+print(f"  Total hidden imports after collect_all: {len(hidden_imports)}")
+print("=" * 60)
+
+# ── Manual hidden imports — names PyInstaller might miss even with collect_all
+hidden_imports += [
     "uvicorn.protocols.websockets.websockets_impl",
     "uvicorn.protocols.http.h11_impl",
     "uvicorn.lifespan.on",
     "uvicorn.loops.asyncio",
-    "fastapi",
-    "websockets",
-    "websockets.legacy",
-    "websockets.legacy.server",
-    "h11",
-    "starlette",
-
-    # Brokers (cross-platform: ccxt). MT5 added below for Windows only.
-    "ccxt",
-    "ccxt.async_support",
     "ccxt.async_support.binance",
     "ccxt.async_support.bybit",
     "ccxt.async_support.okx",
-
-    # ML / numerics
-    "optuna",
-    "optuna.samplers",
-    "optuna.pruners",
-    "scipy",
     "scipy.stats",
     "scipy.special",
     "scipy.signal",
-    "pandas",
-    "numpy",
-
-    # Storage
-    "aiosqlite",
     "sqlalchemy.dialects.sqlite",
-    "alembic",
-
-    # Security
     "cryptography.hazmat.backends.openssl",
-    "argon2",
     "argon2._ffi",
     "argon2.low_level",
-    "jwt",
     "jwt.algorithms",
-
-    # Notifications + tunnel
-    "pywebpush",
-    "py_vapid",
-    "qrcode",
     "qrcode.image.pil",
-    "PIL",
-    "pyngrok",
-
-    # Scheduler
-    "apscheduler",
     "apscheduler.schedulers.asyncio",
     "apscheduler.triggers.cron",
     "apscheduler.triggers.interval",
-
-    # Misc
-    "platformdirs",
 ]
 
-# Platform-conditional hidden imports — adding non-installed packages to this
-# list aborts PyInstaller's analysis on the wrong platform.
+# Platform-conditional hidden imports.
 if IS_WIN:
     hidden_imports += ["MetaTrader5", "win10toast"]
 if IS_MAC:
     hidden_imports += ["pync"]
 
-# ── Excludes — heavy or platform-specific deps that the legacy code
-#     references lazily. They are not needed for the desktop runtime
-#     and would bloat the bundle by tens of megabytes if pulled in.
+# ── Excludes — heavy or platform-specific deps that aren't needed at runtime.
 excludes = [
     "tkinter.test",
     "test",
     "unittest",
-    "yfinance",            # legacy backtester historic data — runtime-optional
-    "matplotlib",          # legacy reporting — not used by the desktop app
+    "yfinance",
+    "matplotlib",
     "matplotlib.pyplot",
     "seaborn",
 ]
 
-# Add submodules from packages that frequently miss their dynamic imports.
-for sub_pkg in (
-    "platformdirs",
-    "pydantic",
-    "pydantic_settings",
-    "argon2",
-    "httpx",
-    "httpcore",
-    "anyio",
-    "uvicorn",
-    "starlette",
-    "websockets",
-    "sqlalchemy",
-    "alembic",
-):
-    try:
-        hidden_imports.extend(collect_submodules(sub_pkg))
-    except Exception:
-        pass
+# Dedupe to keep the analysis fast.
+hidden_imports = sorted(set(hidden_imports))
+print(f"Final hidden_imports count: {len(hidden_imports)}")
+print("=" * 60)
 
 a = Analysis(
     [str(ROOT / "desktop" / "main.py")],
@@ -210,11 +176,6 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 icon_file = ASSETS / "app-icon.ico"
 version_file = ROOT / "packaging" / "pyinstaller" / "version_info.txt"
 
-# onedir mode — produces dist/Hermes/ folder with Hermes.exe + all DLLs/PYDs
-# loose. This is dramatically more reliable than onefile because PyInstaller
-# doesn't unpack to a temp dir at runtime — every package is just present
-# on disk where Python's import machinery expects it. Inno Setup ships the
-# whole folder so the user-visible install experience is identical.
 exe = EXE(
     pyz,
     a.scripts,
