@@ -38,9 +38,18 @@ class TradingService:
 
     @property
     def status(self) -> dict:
+        # Worker is always a dict so consumers can do .get("running") safely
+        # without a None-check. _IDLE_STATE matches TradingWorker.state shape.
+        worker_state = self._worker.state if self._worker else {
+            "running": False,
+            "paused": False,
+            "last_tick": None,
+            "tick_count": 0,
+            "last_error": None,
+        }
         return {
             "broker_account_id": self._broker_account_id,
-            "worker": self._worker.state if self._worker else None,
+            "worker": worker_state,
         }
 
     async def start(self, broker_account_id: int) -> dict:
