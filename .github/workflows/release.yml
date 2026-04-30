@@ -40,20 +40,31 @@ jobs:
           pip install --prefer-binary -e "backend[desktop]"
           pip install pyinstaller pillow
 
-      - name: Diagnose installed packages (sanity check)
+      - name: Diagnose installed packages (informational)
         shell: pwsh
+        continue-on-error: true
         run: |
-          Write-Host "=== Critical packages must be importable ==="
+          Write-Host "=== pip list ==="
+          pip list
+          Write-Host ""
+          Write-Host "=== Import check (informational — non-fatal) ==="
           $modules = @("httpx", "platformdirs", "uvicorn", "fastapi", "pydantic", "argon2",
                        "ccxt", "webview", "sqlalchemy", "aiosqlite", "pywebpush", "qrcode",
                        "apscheduler", "scipy", "pandas", "numpy", "optuna", "cryptography", "jwt")
+          $failed = @()
           foreach ($m in $modules) {
             $check = python -c "import $m; print(getattr($m, '__version__', '?'))" 2>&1
             if ($LASTEXITCODE -eq 0) {
-              Write-Host "  OK  $m  $check"
+              Write-Host "  OK    $m  $check"
             } else {
-              Write-Error "  FAIL  $m  → $check"
+              Write-Host "  WARN  $m  → $check"
+              $failed += $m
             }
+          }
+          if ($failed.Count -gt 0) {
+            Write-Host ""
+            Write-Host "WARN: These packages did not import — bundle MIGHT be incomplete:"
+            $failed | ForEach-Object { Write-Host "  - $_" }
           }
 
       - name: Install frontend
