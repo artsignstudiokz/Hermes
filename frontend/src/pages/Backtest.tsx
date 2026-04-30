@@ -24,10 +24,11 @@ export function Backtest() {
   const config = useStrategyConfig();
   const runs = useBacktestRuns();
   const start = useStartBacktest();
-  const [days, setDays] = useState(90);
+  const [days, setDays] = useState(30);
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
   const detail = useBacktestRun(activeRunId);
+  const heavyRun = days >= 60;
 
   useEffect(() => {
     if (activeRunId === null) return;
@@ -76,11 +77,9 @@ export function Backtest() {
             onChange={(e) => setDays(Number(e.target.value))}
             className="form-input"
           >
-            <option value={30}>30 дней</option>
-            <option value={60}>60 дней</option>
-            <option value={90}>90 дней</option>
-            <option value={180}>180 дней</option>
-            <option value={365}>1 год</option>
+            <option value={14}>14 дней</option>
+            <option value={30}>30 дней (рекомендуется)</option>
+            <option value={60}>60 дней (тяжело)</option>
           </select>
           <button
             onClick={onRun}
@@ -92,6 +91,13 @@ export function Backtest() {
           </button>
         </div>
       </header>
+
+      {heavyRun && !activeRunId && (
+        <div className="rounded-xl border border-hermes-bronze/40 bg-hermes-bronze/10 p-4 text-sm text-hermes-bronze">
+          Бэктест на 60+ днях нагружает CPU и память. Прогон может занять 1–3
+          минуты. Не закрывайте окно — Hermes напишет, когда закончит.
+        </div>
+      )}
 
       {/* Active run */}
       {activeRunId !== null && (

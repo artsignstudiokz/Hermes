@@ -25,8 +25,17 @@ class BacktestService:
         self._ws = get_ws_manager()
         self._tasks: dict[int, asyncio.Task] = {}
 
+    # Hard limits prevent the legacy engine from blowing the process in
+    # frozen builds. 60 days × ~6 pairs × 1h bars ≈ 8.6k bars × strategy
+    # logic — runs in ~30s, fits in memory. Above that the SciPy/NumPy
+    # internals can segfault Python entirely on Windows PyInstaller.
+    MAX_DAYS = 60
+    MAX_SYMBOLS = 8
+
     async def submit(self, params: dict, symbols: list[str], days: int) -> int:
         """Persist a row, kick off a task, return run_id."""
+        days = max(1, min(int(days), self.MAX_DAYS))
+        symbols = symbols[: self.MAX_SYMBOLS]
         sm = get_sessionmaker()
         async with sm() as session:
             row = BacktestRun(params={**params, "symbols": symbols, "days": days}, status="pending")
@@ -72,7 +81,17 @@ class BacktestService:
                 raise RuntimeError("No data fetched — backtest aborted")
 
             await self._broadcast(ws_topic, {"type": "progress", "stage": "running", "pct": 50})
-            metrics = await asyncio.to_thread(run_backtest, data, params, 10_000.0)
+            # 5-minute hard timeout: if the legacy engine hangs (or in a
+            # frozen build, manages to walk into a bad C-extension state),
+            # we cancel cleanly instead of leaving the user with a stuck
+            # progress bar forever.
+            try:
+                metrics = await asyncio.wait_for(
+                    asyncio.to_thread(run_backtest, data, params, 10_000.0),
+                    timeout=300,
+                )
+            except asyncio.TimeoutError as e:
+                raise RuntimeError("Backtest exceeded 5-minute limit — try fewer days or pairs") from e
             await self._broadcast(ws_topic, {"type": "progress", "stage": "running", "pct": 95})
 
             equity_series = metrics.pop("equity_curve", None)
