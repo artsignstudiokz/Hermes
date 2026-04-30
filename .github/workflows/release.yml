@@ -99,8 +99,11 @@ jobs:
 
           # Boot the exe headless and kill it — surfaces missing-module errors
           # in the CI log instead of in the user's installer wizard.
+          # Note: PyInstaller --windowed apps spawn no console, so -WindowStyle
+          # Hidden alone is enough. Combining -NoNewWindow with -WindowStyle
+          # is a PowerShell parameter conflict.
           Write-Host "Smoke-testing exe (5s timeout for top-level imports + uvicorn boot)…"
-          $proc = Start-Process -FilePath $exe -PassThru -NoNewWindow -WindowStyle Hidden
+          $proc = Start-Process -FilePath $exe -PassThru -WindowStyle Hidden
           Start-Sleep -Seconds 5
           if ($proc.HasExited -and $proc.ExitCode -ne 0) {
             Write-Error "Hermes.exe crashed at startup with exit code $($proc.ExitCode)"
