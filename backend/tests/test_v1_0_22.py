@@ -168,6 +168,79 @@ def test_mean_reversion_requires_stochastic_confirmation():
     assert "Stochastic" in sig.reason
 
 
+def test_mark_trade_closed_updates_open_rows_only():
+    """`_mark_trade_closed` is the central path every close goes
+    through (manual / kill switch / reconciliation). It must:
+      - find rows by ticket where closed_at IS NULL
+      - set closed_at / exit_price / pnl / reason
+      - leave already-closed rows untouched
+    """
+    import asyncio
+    from datetime import datetime, timezone
+
+    from app.api.routes.positions import _mark_trade_closed
+    from app.db.session import get_engine, init_db, get_sessionmaker
+    from sqlalchemy import text
+
+    async def run():
+        # A prior test (test_init_db_adds_mode_and_signal_reason_columns)
+        # drops broker_accounts and rebuilds it with the legacy schema
+        # to exercise the migration path. That can leave the table
+        # missing TimestampMixin columns by the time we run, so reset
+        # the schema cleanly via DROP + init_db before inserting.
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql("DROP TABLE IF EXISTS trades")
+            await conn.exec_driver_sql("DROP TABLE IF EXISTS broker_accounts")
+        await init_db()
+        sm = get_sessionmaker()
+        async with sm() as session:
+            await session.execute(text(
+                "INSERT INTO broker_accounts (id, type, name, server, login, vault_key, "
+                "is_active, is_testnet, created_at, updated_at) VALUES "
+                "(101, 'mt5', 'X', NULL, NULL, 'k', 1, 0, '2026-01-01', '2026-01-01')"
+            ))
+            # Two trades on same ticket: one already closed (don't touch),
+            # one still open (should be updated).
+            await session.execute(text(
+                "INSERT INTO trades (broker_account_id, ticket, symbol, direction, "
+                "level, lots, entry_price, opened_at, reason, mode, pnl, commission, "
+                "swap, closed_at, exit_price) VALUES (101, '999', 'EURUSD', 'long', "
+                "0, 0.01, 1.10, '2026-01-01', 'auto_autonomous', 'autonomous', 0, 0, 0, "
+                "'2026-01-02', 1.11)"
+            ))
+            await session.execute(text(
+                "INSERT INTO trades (broker_account_id, ticket, symbol, direction, "
+                "level, lots, entry_price, opened_at, reason, mode, pnl, commission, "
+                "swap) VALUES (101, '888', 'EURUSD', 'long', 0, 0.01, 1.10, "
+                "'2026-01-01', 'auto_autonomous', 'autonomous', 0, 0, 0)"
+            ))
+            await session.commit()
+
+            await _mark_trade_closed(
+                session, ticket="888", exit_price=1.20, pnl=10.0, reason="manual",
+            )
+
+            res = await session.execute(text(
+                "SELECT ticket, closed_at, exit_price, pnl, reason "
+                "FROM trades WHERE broker_account_id = 101 ORDER BY ticket"
+            ))
+            rows = res.all()
+            assert len(rows) == 2
+            # ticket 888 (just closed) — closed_at set, exit_price 1.20
+            r888 = next(r for r in rows if r[0] == "888")
+            assert r888[1] is not None
+            assert float(r888[2]) == 1.20
+            assert float(r888[3]) == 10.0
+            assert r888[4] == "manual"
+            # ticket 999 (already closed) — UNTOUCHED, exit_price still 1.11
+            r999 = next(r for r in rows if r[0] == "999")
+            assert float(r999[2]) == 1.11    # not overwritten
+            assert r999[4] == "auto_autonomous"   # not overwritten
+
+    asyncio.run(run())
+
+
 def test_order_request_carries_stop_loss_and_take_profit():
     """OrderRequest gained optional SL/TP fields in v1.0.22.1 — the
     MT5 adapter forwards them so the position stays protected when

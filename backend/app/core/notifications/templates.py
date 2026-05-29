@@ -58,6 +58,42 @@ def _ru(event: dict) -> dict[str, str]:
             "body": (event.get("message") or "Неизвестная ошибка")[:120],
             "body_long": f"❌ <b>Hermes</b> сообщил об ошибке:\n<code>{event.get('message','')}</code>",
         }
+    if t == "trade_opened":
+        # Auto-entry from the ensemble (proven / autonomous mode). Carries
+        # the mode, confidence, and the markdown reason from the signal.
+        side_word = "Покупка" if direction == "long" else "Продажа"
+        mode_word = {"proven": "Проверенный", "autonomous": "Автономный"}.get(
+            event.get("mode", ""), event.get("mode", ""),
+        )
+        conf = event.get("confidence", 0)
+        return {
+            "title": f"Hermes · {sym} открыто",
+            "body": f"{_arrow(direction)} {side_word} {sym} · режим {mode_word}",
+            "body_long": (
+                f"<b>Hermes</b> открыл сделку ({mode_word})\n"
+                f"{sym} · {side_word} · уверенность {conf:.2f}\n\n"
+                f"<i>{event.get('reason', '')[:500]}</i>"
+            ),
+        }
+    if t == "broker_down":
+        return {
+            "title": "Hermes · Брокер недоступен",
+            "body": "Бот приостановлен — проверьте MT5 терминал",
+            "body_long": (
+                f"⚠️ <b>Hermes</b> приостановлен: брокер не отвечает.\n"
+                f"<code>{event.get('reason','')}</code>\n\n"
+                f"Откройте терминал MT5 и убедитесь что вы вошли в аккаунт."
+            ),
+        }
+    if t == "risk_block":
+        return {
+            "title": "Hermes · Сигнал отклонён",
+            "body": f"Risk engine: {event.get('reason', '')[:80]}",
+            "body_long": (
+                f"🛡 <b>Hermes</b> не открыл сделку на {sym}\n\n"
+                f"<i>{event.get('reason', '')}</i>"
+            ),
+        }
     return {"title": f"Hermes · {t}", "body": str(event), "body_long": str(event)}
 
 

@@ -175,6 +175,51 @@ class TradingWorker:
     def resume(self) -> None:
         self._paused = False
 
+    async def _reconcile_closed_trades(self, sm, positions: list) -> None:
+        """Detect tickets the broker closed without our help.
+
+        With v1.0.23 broker-side SL/TP, a position can close
+        autonomously while the worker is busy / paused. Without this
+        reconciliation the TradeRow would stay `closed_at IS NULL`
+        forever and the Trades page would lie.
+
+        Strategy: any TradeRow for our account that's still open but
+        whose ticket is missing from the broker → assume the broker
+        closed it. We don't have the exact exit price (already gone
+        from positions_get); the broker history endpoint would have
+        it but the round-trip is heavy for every tick. For now we
+        record closed_at + reason="broker_closed" and leave
+        exit_price/pnl as the last snapshot saved.
+        """
+        from app.db.models import TradeRow
+        live_tickets = {str(p.ticket) for p in positions}
+        async with sm() as session:
+            open_rows = (await session.execute(
+                select(TradeRow).where(
+                    TradeRow.broker_account_id == self._account_id,
+                    TradeRow.closed_at.is_(None),
+                ),
+            )).scalars().all()
+            now = datetime.now(timezone.utc)
+            updated = 0
+            for row in open_rows:
+                if str(row.ticket) in live_tickets:
+                    continue
+                # Already manually closed via the API? Skip — _mark_trade_closed
+                # may have just committed in a different session.
+                row.closed_at = now
+                # Don't overwrite a reason set by another path (manual /
+                # kill_switch). Only fill if the row never had one.
+                if not row.reason or row.reason in ("auto_proven", "auto_autonomous", "grid_entry"):
+                    row.reason = "broker_closed"
+                updated += 1
+            if updated:
+                await session.commit()
+                logger.info(
+                    "Reconciliation: marked %d ticket(s) closed by broker",
+                    updated,
+                )
+
     async def _broker_health_probe(self) -> bool:
         """Returns True if the adapter answered, False if we should skip
         the tick (already paused / still trying to reconnect).
@@ -197,11 +242,19 @@ class TradingWorker:
             if self._consecutive_health_fails >= 3:
                 self._paused = True
                 self._last_error = f"Broker unreachable: {e}"
-                await self._ws.broadcast("signals", {
+                down_event = {
                     "type": "broker_down",
                     "reason": str(e),
                     "ts": datetime.now(timezone.utc).isoformat(),
-                })
+                }
+                await self._ws.broadcast("signals", down_event)
+                # Tell the operator their bot is paused — Telegram/web
+                # push so they see it even when away from the dashboard.
+                if self._notifier is not None:
+                    try:
+                        await self._notifier.dispatch(down_event)
+                    except Exception:  # noqa: BLE001
+                        logger.exception("Notifier dispatch failed for broker_down")
                 return False
             # Try to reconnect quietly between probes.
             try:
@@ -328,7 +381,7 @@ class TradingWorker:
                 signal_reason=best.reason,
             ))
             await session.commit()
-        await self._ws.broadcast("signals", {
+        trade_event = {
             "type": "trade_opened",
             "mode": self._mode,
             "symbol": best.symbol,
@@ -337,7 +390,16 @@ class TradingWorker:
             "reason": best.reason,
             "trades_today": self._trades_today,
             "ts": self._last_tick.isoformat(),
-        })
+        }
+        await self._ws.broadcast("signals", trade_event)
+        # Push to web/telegram subscribers too — the operator may be
+        # away from the desk, and a trade-open is a notify-worthy
+        # event. Best effort: notifier errors don't block.
+        if self._notifier is not None:
+            try:
+                await self._notifier.dispatch(trade_event)
+            except Exception:  # noqa: BLE001
+                logger.exception("Notifier dispatch failed for trade_opened")
         logger.info(
             "Opened %s %s in %s mode (conf=%.2f, %d/%d today)",
             best.direction, best.symbol, self._mode, best.confidence,
@@ -346,12 +408,33 @@ class TradingWorker:
 
     async def kill_switch(self) -> int:
         """Close everything immediately, regardless of strategy state."""
+        # Snapshot first so we can write exit_price + pnl per ticket
+        # into TradeRow. After close_all the tickets vanish from
+        # positions_get and that data is gone.
+        positions = await self._adapter.get_positions()
         closed = await self._adapter.close_all()
-        await self._ws.broadcast("signals", {
+        if positions:
+            sm = get_sessionmaker()
+            async with sm() as session:
+                from app.api.routes.positions import _mark_trade_closed
+                for p in positions:
+                    await _mark_trade_closed(
+                        session, ticket=str(p.ticket),
+                        exit_price=float(p.current_price),
+                        pnl=float(p.unrealized_pnl),
+                        reason="kill_switch",
+                    )
+        ks_event = {
             "type": "kill_switch",
             "closed_count": closed,
             "ts": datetime.now(timezone.utc).isoformat(),
-        })
+        }
+        await self._ws.broadcast("signals", ks_event)
+        if self._notifier is not None:
+            try:
+                await self._notifier.dispatch(ks_event)
+            except Exception:  # noqa: BLE001
+                logger.exception("Notifier dispatch failed for kill_switch")
         logger.warning("Kill-switch invoked: %d positions closed", closed)
         return closed
 
@@ -416,6 +499,12 @@ class TradingWorker:
         account = await self._adapter.get_account()
         positions = await self._adapter.get_positions()
         self._risk.update(float(account.equity), len(positions))
+
+        # Reconcile: any TradeRow that's still marked open but whose
+        # ticket is no longer in positions_get was closed BY THE BROKER
+        # (SL hit, TP hit, manual MT5 close, broker margin call). Mark
+        # those rows closed so the Trades page reflects reality.
+        await self._reconcile_closed_trades(sm, positions)
 
         # Mode-driven entry decision: pick the strongest report, open ONE
         # trade if it clears the per-mode confidence floor, daily quota,
