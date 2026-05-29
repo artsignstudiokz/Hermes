@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
 import type { Trade, TradeStats } from "./types";
@@ -33,6 +33,15 @@ export interface StatsByMode {
     autonomous: ModeStats;
     manual: ModeStats;
   };
+}
+
+export function useUpdateTradeNotes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes: string }) =>
+      api.patch<Trade, { notes: string }>(`/api/trades/${id}/notes`, { notes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["trades"] }),
+  });
 }
 
 export function useTradeStatsByMode(days = 30) {

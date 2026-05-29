@@ -4,14 +4,19 @@ import csv
 import io
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.broker import TradeOut
 from app.db.models import TradeRow
 from app.deps import get_db_session
+
+
+class NotesUpdate(BaseModel):
+    notes: str = Field(default="", max_length=4000)
 
 router = APIRouter()
 
@@ -54,9 +59,36 @@ async def list_trades(
             reason=t.reason,
             mode=t.mode,
             signal_reason=t.signal_reason,
+            notes=t.notes,
         )
         for t in rows
     ]
+
+
+@router.patch("/{trade_id}/notes", response_model=TradeOut)
+async def update_notes(
+    trade_id: int,
+    body: NotesUpdate,
+    session: AsyncSession = Depends(get_db_session),
+) -> TradeOut:
+    """Operator's free-form journal entry attached to a single trade.
+    Sent as plain text; null/empty clears the existing note.
+    """
+    row = await session.get(TradeRow, trade_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Trade not found")
+    row.notes = body.notes.strip() or None
+    await session.commit()
+    await session.refresh(row)
+    return TradeOut(
+        id=row.id, ticket=row.ticket, symbol=row.symbol, direction=row.direction,
+        level=row.level, lots=row.lots, entry_price=row.entry_price,
+        exit_price=row.exit_price, pnl=row.pnl, commission=row.commission,
+        swap=row.swap, opened_at=row.opened_at.isoformat(),
+        closed_at=row.closed_at.isoformat() if row.closed_at else None,
+        reason=row.reason, mode=row.mode, signal_reason=row.signal_reason,
+        notes=row.notes,
+    )
 
 
 @router.get("/stats")

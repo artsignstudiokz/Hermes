@@ -83,3 +83,4 @@ class TradeOut(BaseModel):
     # reasoning markdown so the Trades page can filter / explain.
     mode: str = "manual"
     signal_reason: str | None = None
+    notes: str | None = None

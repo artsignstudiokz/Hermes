@@ -38,3 +38,7 @@ class TradeRow(Base):
     # Kept as Text so we can render the same reasoning in the history page
     # as we did at open time.
     signal_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Operator's own notes about this trade — written from the Trades page
+    # after the fact. "Закрыл руками — был против тренда новостей",
+    # "Хорошая работа автономного режима". Free text, no schema.
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)

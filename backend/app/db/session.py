@@ -77,5 +77,7 @@ async def init_db() -> None:
                 sync_conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_trades_mode ON trades(mode)")
             if "signal_reason" not in cols:
                 sync_conn.exec_driver_sql("ALTER TABLE trades ADD COLUMN signal_reason TEXT")
+            if "notes" not in cols:
+                sync_conn.exec_driver_sql("ALTER TABLE trades ADD COLUMN notes TEXT")
 
         await conn.run_sync(_patch)

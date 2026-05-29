@@ -1,15 +1,27 @@
-import { motion } from "framer-motion";
-import { Download } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Brain, ChevronDown, Download, Pencil, ShieldAlert, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { useTradeStats, useTrades } from "@/api/useTrades";
+import { useTradeStats, useTrades, useUpdateTradeNotes } from "@/api/useTrades";
+import { ApiError } from "@/lib/api";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { toast } from "@/lib/toast";
+import type { Trade } from "@/api/types";
 
 export function Trades() {
   const [days, setDays] = useState<number>(30);
   const [symbol, setSymbol] = useState<string>("");
+  const [modeFilter, setModeFilter] = useState<string>("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const trades = useTrades({ days, symbol: symbol || undefined, limit: 500 });
   const stats = useTradeStats(days);
+  const updateNotes = useUpdateTradeNotes();
+
+  const filtered = useMemo(() => {
+    let list = trades.data ?? [];
+    if (modeFilter) list = list.filter((t) => t.mode === modeFilter);
+    return list;
+  }, [trades.data, modeFilter]);
 
   const symbols = useMemo(() => {
     const set = new Set((trades.data ?? []).map((t) => t.symbol));
@@ -99,9 +111,20 @@ export function Trades() {
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
+            <select
+              value={modeFilter}
+              onChange={(e) => setModeFilter(e.target.value)}
+              className="form-input"
+              title="Фильтр по режиму, открывшему сделку"
+            >
+              <option value="">Все режимы</option>
+              <option value="proven">🛡 Проверенный</option>
+              <option value="autonomous">🧠 Автономный</option>
+              <option value="manual">✏ Ручные</option>
+            </select>
           </div>
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
-            {trades.data?.length ?? 0} строк
+            {filtered.length} строк
           </span>
         </div>
 
@@ -109,6 +132,8 @@ export function Trades() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <th className="w-8"></th>
+                <th className="px-3 py-2 text-left">Режим</th>
                 <th className="px-4 py-2 text-left">Тикет</th>
                 <th className="px-3 py-2 text-left">Символ</th>
                 <th className="px-3 py-2 text-left">Напр.</th>
@@ -117,43 +142,77 @@ export function Trades() {
                 <th className="px-3 py-2 text-right">Выход</th>
                 <th className="px-3 py-2 text-right">P&amp;L</th>
                 <th className="px-3 py-2 text-left">Открыта</th>
-                <th className="px-3 py-2 text-left">Причина</th>
               </tr>
             </thead>
             <tbody>
-              {(trades.data ?? []).map((t) => (
-                <tr
-                  key={t.id}
-                  className="border-t border-hermes-gold/15 hover:bg-hermes-parchment/30"
-                >
-                  <td className="px-4 py-2 font-mono text-xs">{t.ticket}</td>
-                  <td className="px-3 py-2 font-medium">{t.symbol}</td>
-                  <td className="px-3 py-2 text-xs">
-                    <span className={t.direction === "long" ? "text-hermes-laurel" : "text-hermes-wine"}>
-                      {t.direction === "long" ? "Long" : "Short"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right number">{(t.lots ?? 0).toFixed(2)}</td>
-                  <td className="px-3 py-2 text-right number">{(t.entry_price ?? 0).toFixed(5)}</td>
-                  <td className="px-3 py-2 text-right number">
-                    {t.exit_price != null ? t.exit_price.toFixed(5) : "—"}
-                  </td>
-                  <td
-                    className={`px-3 py-2 text-right number ${
-                      (t.pnl ?? 0) >= 0 ? "text-hermes-laurel" : "text-hermes-wine"
-                    }`}
-                  >
-                    {formatMoney(t.pnl)}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {formatDateTime(t.opened_at)}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">{t.reason || "—"}</td>
-                </tr>
-              ))}
-              {(trades.data ?? []).length === 0 && !trades.isLoading && (
+              {filtered.map((t) => {
+                const isOpen = expandedId === t.id;
+                return (
+                  <>
+                    <tr
+                      key={t.id}
+                      onClick={() => setExpandedId(isOpen ? null : t.id)}
+                      className={`cursor-pointer border-t border-hermes-gold/15 transition ${
+                        isOpen ? "bg-hermes-gold/10" : "hover:bg-hermes-parchment/30"
+                      }`}
+                    >
+                      <td className="px-2 text-muted-foreground">
+                        <ChevronDown
+                          size={14}
+                          className="transition-transform"
+                          style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-xs"><ModePill mode={t.mode} /></td>
+                      <td className="px-4 py-2 font-mono text-xs">{t.ticket}</td>
+                      <td className="px-3 py-2 font-medium">{t.symbol}</td>
+                      <td className="px-3 py-2 text-xs">
+                        <span className={t.direction === "long" ? "text-hermes-laurel" : "text-hermes-wine"}>
+                          {t.direction === "long" ? "Long" : "Short"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right number">{(t.lots ?? 0).toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right number">{(t.entry_price ?? 0).toFixed(5)}</td>
+                      <td className="px-3 py-2 text-right number">
+                        {t.exit_price != null ? t.exit_price.toFixed(5) : "—"}
+                      </td>
+                      <td
+                        className={`px-3 py-2 text-right number ${
+                          (t.pnl ?? 0) >= 0 ? "text-hermes-laurel" : "text-hermes-wine"
+                        }`}
+                      >
+                        {formatMoney(t.pnl)}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {formatDateTime(t.opened_at)}
+                      </td>
+                    </tr>
+                    <AnimatePresence>
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={10} className="bg-hermes-alabaster/60 px-6 py-4">
+                            <TradeJournalEntry
+                              trade={t}
+                              onSave={async (notes) => {
+                                try {
+                                  await updateNotes.mutateAsync({ id: t.id, notes });
+                                  toast.success("Заметка сохранена");
+                                } catch (e) {
+                                  const m = e instanceof ApiError ? e.message : e instanceof Error ? e.message : String(e);
+                                  toast.error("Не сохранилось", m);
+                                }
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </AnimatePresence>
+                  </>
+                );
+              })}
+              {filtered.length === 0 && !trades.isLoading && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center font-serif italic text-muted-foreground">
+                  <td colSpan={10} className="px-6 py-12 text-center font-serif italic text-muted-foreground">
                     Пока ни одной сделки. После запуска торговли они появятся здесь.
                   </td>
                 </tr>
@@ -165,6 +224,155 @@ export function Trades() {
     </motion.div>
   );
 }
+
+
+// ── Mode pill ────────────────────────────────────────────────────
+
+
+function ModePill({ mode }: { mode: Trade["mode"] }) {
+  const styles = {
+    proven: {
+      icon: ShieldAlert,
+      label: "Проверенный",
+      cls: "border-hermes-laurel/50 bg-hermes-laurel/10 text-hermes-laurel",
+    },
+    autonomous: {
+      icon: Brain,
+      label: "Автономный",
+      cls: "border-hermes-gold/45 bg-hermes-gold/10 text-hermes-gold-deep",
+    },
+    manual: {
+      icon: Sparkles,
+      label: "Ручная",
+      cls: "border-hermes-gold/25 bg-hermes-alabaster/70 text-muted-foreground",
+    },
+  } as const;
+  const s = styles[mode] ?? styles.manual;
+  const Icon = s.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${s.cls}`}>
+      <Icon size={10} />
+      {s.label}
+    </span>
+  );
+}
+
+
+// ── Trade journal entry (expanded row) ───────────────────────────
+
+
+function TradeJournalEntry({
+  trade,
+  onSave,
+}: {
+  trade: Trade;
+  onSave: (notes: string) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(trade.notes ?? "");
+  const [editing, setEditing] = useState(false);
+  const dirty = (draft || "") !== (trade.notes ?? "");
+
+  const handleSave = async () => {
+    await onSave(draft);
+    setEditing(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.25 }}
+      className="grid gap-6 lg:grid-cols-[1fr_1fr]"
+    >
+      {/* Bot's reasoning */}
+      <div>
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-hermes-gold-deep font-semibold">
+          <Brain size={12} /> Почему бот вошёл
+        </div>
+        {trade.signal_reason ? (
+          <div className="mt-2 rounded-xl border border-hermes-gold/30 bg-hermes-alabaster/80 p-3 text-sm whitespace-pre-line leading-relaxed text-foreground/85">
+            {trade.signal_reason}
+          </div>
+        ) : (
+          <div className="mt-2 rounded-xl border border-dashed border-hermes-gold/25 bg-hermes-alabaster/40 p-3 text-xs italic text-muted-foreground">
+            {trade.mode === "manual"
+              ? "Ручной вход — оператор открыл напрямую через «Тест-сделка» или «Анализ»."
+              : "Обоснование сигнала недоступно (сделка из ранней версии бота)."}
+          </div>
+        )}
+
+        {/* Meta line */}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <span><strong className="text-foreground">Причина закрытия:</strong> {trade.reason || "—"}</span>
+          {trade.closed_at && (
+            <span><strong className="text-foreground">Закрыта:</strong> {formatDateTime(trade.closed_at)}</span>
+          )}
+          <span><strong className="text-foreground">Комиссия:</strong> {formatMoney(trade.commission)}</span>
+          <span><strong className="text-foreground">Своп:</strong> {formatMoney(trade.swap)}</span>
+        </div>
+      </div>
+
+      {/* Operator notes */}
+      <div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-hermes-gold-deep font-semibold">
+            <Pencil size={12} /> Заметки оператора
+          </div>
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="text-[11px] text-hermes-gold-deep hover:underline"
+            >
+              {trade.notes ? "Изменить" : "Добавить"}
+            </button>
+          )}
+        </div>
+        {editing ? (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={5}
+              placeholder="Что заметили? Почему оставили / закрыли? Что улучшить в правилах?"
+              className="form-input w-full font-sans text-sm leading-relaxed"
+              maxLength={4000}
+              autoFocus
+            />
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">{draft.length}/4000</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setDraft(trade.notes ?? ""); setEditing(false); }}
+                  className="rounded px-2 py-1 text-muted-foreground hover:text-foreground"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!dirty}
+                  className="gold-button rounded-lg px-3 py-1 font-semibold disabled:opacity-50"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : trade.notes ? (
+          <div className="mt-2 rounded-xl border border-hermes-gold/30 bg-hermes-alabaster/80 p-3 text-sm whitespace-pre-line leading-relaxed">
+            {trade.notes}
+          </div>
+        ) : (
+          <div className="mt-2 rounded-xl border border-dashed border-hermes-gold/25 bg-hermes-alabaster/40 p-3 text-xs italic text-muted-foreground">
+            Заметок нет. Запишите свои наблюдения по этой сделке — они помогут оптимизировать
+            стратегию.
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 
 function Stat({
   label,

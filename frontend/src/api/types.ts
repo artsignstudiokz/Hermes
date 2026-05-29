@@ -42,6 +42,7 @@ export interface Trade {
   reason: string;
   mode: "manual" | "proven" | "autonomous";
   signal_reason: string | null;
+  notes: string | null;
 }
 
 export interface Broker {
