@@ -28,8 +28,14 @@ async def test_check_for_update_handles_unreachable(monkeypatch: pytest.MonkeyPa
         async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             raise httpx.ConnectError("offline", request=request)
 
+    # Capture the real AsyncClient BEFORE patching — otherwise the factory
+    # below references the patched symbol and recurses into itself, which
+    # check_for_update catches silently and returns the default
+    # "no update" reply, making the test pass for the wrong reason.
+    _real_client = httpx.AsyncClient
+
     def _client_factory(*args, **kwargs):
-        return httpx.AsyncClient(transport=_BoomTransport(), **kwargs)
+        return _real_client(transport=_BoomTransport(), **kwargs)
 
     monkeypatch.setattr(update_service.httpx, "AsyncClient", _client_factory)
     info = await check_for_update()
@@ -55,9 +61,12 @@ async def test_check_for_update_finds_newer(monkeypatch: pytest.MonkeyPatch) -> 
         async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, content=json.dumps(payload).encode())
 
+    # See the recursion-trap note in the test above — capture the real
+    # AsyncClient class first, then have the factory use it.
+    _real_client = httpx.AsyncClient
     monkeypatch.setattr(
         update_service.httpx, "AsyncClient",
-        lambda *a, **kw: httpx.AsyncClient(transport=_OkTransport(), **kw),
+        lambda *a, **kw: _real_client(transport=_OkTransport(), **kw),
     )
     info = await check_for_update()
     assert info.has_update is True

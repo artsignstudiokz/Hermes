@@ -58,8 +58,10 @@ def test_ema_order() -> None:
 
 def test_warning_only_for_25_50() -> None:
     # Sized between 25 % and 50 % of equity — warning, not error.
+    # Geometric sum: 0.02 * sum(1.5**i for i in range(5)) = 0.264 lot
+    # at 1:100 leverage = ~$264 margin on $1,000 equity = 26.4% → warning.
     issues = validate_strategy(
-        _params(base_lot_size=0.05, lot_multiplier=1.5, max_grid_levels=6),
+        _params(base_lot_size=0.02, lot_multiplier=1.5, max_grid_levels=5),
         equity=1_000,
     )
     assert not has_errors(issues)
