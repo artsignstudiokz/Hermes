@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import csv
+import io
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,6 +84,58 @@ async def stats(
         "pnl_total": float(pnl_sum),
         "commission_total": float(commission_sum),
     }
+
+
+@router.get("/export.csv")
+async def export_csv(
+    year: int | None = Query(default=None, ge=2020, le=2100),
+    session: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    """Export all closed trades for the given calendar year as CSV
+    with FIFO-style per-trade P&L. If `year` is omitted, exports
+    every closed trade in the DB. Tax tools (KZ KGD, US 1099-B,
+    EU MiFID equivalents) accept this format directly.
+
+    Columns mirror what reporting workflows expect: open/close
+    timestamps in ISO 8601, side, lots, prices, gross P&L, commission
+    and swap split out, net P&L last.
+    """
+    stmt = select(TradeRow).where(TradeRow.closed_at.is_not(None))
+    if year is not None:
+        start = datetime(year, 1, 1, tzinfo=timezone.utc)
+        end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+        stmt = stmt.where(TradeRow.opened_at >= start, TradeRow.opened_at < end)
+    stmt = stmt.order_by(TradeRow.opened_at.asc())
+
+    rows = (await session.execute(stmt)).scalars().all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "ticket", "symbol", "side", "lots",
+        "opened_at_utc", "entry_price",
+        "closed_at_utc", "exit_price",
+        "gross_pnl", "commission", "swap", "net_pnl",
+        "mode", "reason", "signal_reason",
+    ])
+    for r in rows:
+        net = float(r.pnl) - float(r.commission) - float(r.swap)
+        writer.writerow([
+            r.ticket, r.symbol, r.direction, f"{r.lots:.4f}",
+            r.opened_at.isoformat(), f"{r.entry_price:.5f}",
+            r.closed_at.isoformat() if r.closed_at else "",
+            f"{r.exit_price:.5f}" if r.exit_price is not None else "",
+            f"{r.pnl:.2f}", f"{r.commission:.2f}", f"{r.swap:.2f}", f"{net:.2f}",
+            r.mode or "", r.reason or "", (r.signal_reason or "")[:200],
+        ])
+    buf.seek(0)
+    label = f"{year}" if year else "all"
+    filename = f"hermes-trades-{label}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue().encode("utf-8")]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/stats-by-mode")

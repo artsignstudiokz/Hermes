@@ -80,6 +80,11 @@ export interface StrategyParams {
   max_simultaneous_pairs: number;
   symbols: string[];
   timeframe: string;
+  // v1.0.22+: indicator-ensemble selector. Empty / undefined → default
+  // is trend+momentum (the validated profitable pair from the
+  // ensemble backtest). Other choices: "mean_reversion", "breakout".
+  ensemble?: ("trend" | "mean_reversion" | "breakout" | "momentum")[];
+  ensemble_mode?: "any" | "majority" | "all";
 }
 
 export interface StrategyConfig {

@@ -55,6 +55,13 @@ class StrategyParams(BaseModel):
     ])
     timeframe: str = Field(default="1h")
 
+    # v1.0.22+ — indicator-ensemble selector for autonomous mode.
+    # Empty list / None falls back to ["trend", "momentum"] (the only
+    # combo validated profitable on the synthetic backtest). The voting
+    # mode controls how the ensemble combines per-strategy signals.
+    ensemble: list[str] = Field(default_factory=lambda: ["trend", "momentum"])
+    ensemble_mode: str = Field(default="majority", pattern="^(any|majority|all)$")
+
 
 class PresetOut(BaseModel):
     id: str

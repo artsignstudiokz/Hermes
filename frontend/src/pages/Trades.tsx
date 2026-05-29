@@ -50,12 +50,23 @@ export function Trades() {
             История <span className="gold-text">сделок</span>
           </h1>
         </div>
-        <button
-          onClick={exportCsv}
-          className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-2.5 text-sm font-medium hover:bg-hermes-parchment"
-        >
-          <Download size={14} /> Скачать CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={exportCsv}
+            className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-2.5 text-sm font-medium hover:bg-hermes-parchment"
+            title="CSV всех сделок текущего фильтра"
+          >
+            <Download size={14} /> Текущий период
+          </button>
+          <a
+            href={`/api/trades/export.csv?year=${new Date().getFullYear()}`}
+            download
+            className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold-deep/50 bg-hermes-gold/10 px-4 py-2.5 text-sm font-semibold hover:bg-hermes-gold/20"
+            title="Налоговый отчёт за текущий год — все закрытые сделки с net P&L"
+          >
+            <Download size={14} /> Налоговый ({new Date().getFullYear()})
+          </a>
+        </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-4">

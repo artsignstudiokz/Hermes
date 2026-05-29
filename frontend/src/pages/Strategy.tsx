@@ -27,7 +27,25 @@ const DEFAULTS: StrategyParams = {
   max_simultaneous_pairs: 5,
   symbols: ["EURUSD", "GBPUSD", "EURCHF", "EURJPY", "USDCHF", "USDJPY"],
   timeframe: "1h",
+  ensemble: ["trend", "momentum"],
+  ensemble_mode: "majority",
 };
+
+const ALL_STRATEGIES: Array<{
+  id: NonNullable<StrategyParams["ensemble"]>[number];
+  label: string;
+  description: string;
+}> = [
+  { id: "trend", label: "Trend Following", description: "EMA cross + ADX подтверждение" },
+  { id: "momentum", label: "Momentum", description: "MACD-гистограмма + Stochastic" },
+  { id: "mean_reversion", label: "Mean Reversion", description: "BB + RSI + Stoch turn" },
+  { id: "breakout", label: "Breakout", description: "Donchian пробой + ATR" },
+];
+
+const COMMON_SYMBOLS = [
+  "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD", "NZDUSD",
+  "EURJPY", "EURGBP", "EURCHF", "GBPJPY", "AUDJPY", "XAUUSD", "XAGUSD",
+];
 
 export function Strategy() {
   const presets = usePresets();
@@ -196,6 +214,94 @@ export function Strategy() {
             issues={issueByField.risk_per_trade_pct}
             decimals={1}
           />
+        </div>
+
+        {/* Ensemble strategy selector — drives the autonomous mode */}
+        <div className="mt-8">
+          <h3 className="display text-base font-semibold">Стратегии анализа</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Какие стратегии запускает автономный режим. По умолчанию — Trend + Momentum,
+            единственная пара с положительным ожиданием в backtest.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {ALL_STRATEGIES.map((s) => {
+              const checked = (params.ensemble ?? ["trend", "momentum"]).includes(s.id);
+              return (
+                <label
+                  key={s.id}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
+                    checked
+                      ? "border-hermes-gold-deep/60 bg-hermes-gold/10"
+                      : "border-hermes-gold/25 bg-hermes-alabaster/40 hover:bg-hermes-parchment/40"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-hermes-gold-deep"
+                    checked={checked}
+                    onChange={(e) => {
+                      const cur = new Set(params.ensemble ?? ["trend", "momentum"]);
+                      if (e.target.checked) cur.add(s.id);
+                      else cur.delete(s.id);
+                      setParams({ ...params, ensemble: Array.from(cur) as StrategyParams["ensemble"] });
+                    }}
+                  />
+                  <div>
+                    <div className="text-sm font-semibold">{s.label}</div>
+                    <div className="text-[11px] text-muted-foreground">{s.description}</div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex items-center gap-3 text-xs">
+            <span className="uppercase tracking-[0.18em] text-muted-foreground">Голосование</span>
+            {(["any", "majority", "all"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setParams({ ...params, ensemble_mode: m })}
+                className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-wider transition ${
+                  (params.ensemble_mode ?? "majority") === m
+                    ? "bg-hermes-gold-deep text-hermes-alabaster"
+                    : "border border-hermes-gold/30 bg-hermes-alabaster hover:bg-hermes-parchment"
+                }`}
+              >
+                {m === "any" ? "Любая" : m === "majority" ? "Большинство" : "Все"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Symbols multi-select */}
+        <div className="mt-8">
+          <h3 className="display text-base font-semibold">Торгуемые пары</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Бот наблюдает все выбранные пары и открывает позицию на лучшей. Без активной
+            пары торговля невозможна.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {COMMON_SYMBOLS.map((sym) => {
+              const checked = params.symbols.includes(sym);
+              return (
+                <button
+                  key={sym}
+                  onClick={() => {
+                    const cur = new Set(params.symbols);
+                    if (cur.has(sym)) cur.delete(sym);
+                    else cur.add(sym);
+                    setParams({ ...params, symbols: Array.from(cur) });
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition ${
+                    checked
+                      ? "bg-hermes-laurel/20 text-hermes-laurel border border-hermes-laurel/50"
+                      : "border border-hermes-gold/25 text-muted-foreground hover:bg-hermes-parchment/40"
+                  }`}
+                >
+                  {checked && "✓ "}{sym}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
