@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import platform
 from collections import deque
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app import __brand__, __product__, __version__
@@ -79,6 +81,43 @@ async def tail_logs(
     with log_file.open("r", encoding="utf-8", errors="replace") as f:
         lines = list(deque(f, maxlen=tail))
     return LogsResponse(lines=[ln.rstrip("\n") for ln in lines])
+
+
+@router.get("/logs/bundle")
+async def logs_bundle(
+    settings: Settings = Depends(get_app_settings),
+) -> StreamingResponse:
+    """Pack the last 14 days of hermes.log plus a small system report
+    into a single ZIP the operator can attach to a support request.
+
+    Deliberately scrubs nothing — the operator can edit the archive
+    before sending. Vault file and credentials.enc are EXCLUDED by
+    path, never touched.
+    """
+    import io
+    import zipfile
+    import platform as _plat
+
+    log_file: Path = settings.log_file
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        if log_file.exists():
+            zf.write(log_file, arcname="hermes.log")
+        # Companion file with environment + version info.
+        report = (
+            f"Hermes {__version__} ({__product__} by {__brand__})\n"
+            f"OS: {_plat.system()} {_plat.release()} ({_plat.machine()})\n"
+            f"Python: {_plat.python_version()}\n"
+            f"Data dir: {settings.data_dir}\n"
+        )
+        zf.writestr("system-report.txt", report)
+    buf.seek(0)
+    filename = f"hermes-logs-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.zip"
+    return StreamingResponse(
+        iter([buf.read()]),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/log-client-error", status_code=204)

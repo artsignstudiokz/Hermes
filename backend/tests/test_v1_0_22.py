@@ -168,6 +168,25 @@ def test_mean_reversion_requires_stochastic_confirmation():
     assert "Stochastic" in sig.reason
 
 
+def test_order_request_carries_stop_loss_and_take_profit():
+    """OrderRequest gained optional SL/TP fields in v1.0.22.1 — the
+    MT5 adapter forwards them so the position stays protected when
+    the bot dies. Verify the dataclass accepts them and the
+    defaults are None."""
+    from app.core.brokers.models import Direction, OrderRequest
+
+    bare = OrderRequest(symbol="EURUSD", direction=Direction.LONG, lot_size=0.01)
+    assert bare.stop_loss is None
+    assert bare.take_profit is None
+
+    with_stops = OrderRequest(
+        symbol="EURUSD", direction=Direction.LONG, lot_size=0.01,
+        stop_loss=1.0850, take_profit=1.0950,
+    )
+    assert with_stops.stop_loss == 1.0850
+    assert with_stops.take_profit == 1.0950
+
+
 def test_default_ensemble_is_trend_plus_momentum():
     """v1.0.22 default roster — the only combo we've validated."""
     from app.core.strategy.signals import (

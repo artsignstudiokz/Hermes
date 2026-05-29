@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CheckCircle2, ExternalLink, GraduationCap, Loader2, Moon, RefreshCw, Sun, Sunrise } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, GraduationCap, Loader2, Moon, RefreshCw, Sun, Sunrise } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useCheckUpdate, useVersion } from "@/api/useSystem";
@@ -92,6 +92,27 @@ export function Settings() {
             <GraduationCap size={14} />
             Перепройти тур
           </button>
+        </div>
+      </section>
+
+      {/* Support — download logs */}
+      <section className="marble-card p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="display text-xl font-semibold">Поддержка</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Если что-то работает не так — скачай архив с логами и пришли его в поддержку.
+              В архиве — `hermes.log` и информация об ОС. Vault и пароли не включаются.
+            </p>
+          </div>
+          <a
+            href="/api/system/logs/bundle"
+            download
+            className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-2.5 text-sm font-semibold uppercase tracking-wider hover:bg-hermes-parchment transition"
+          >
+            <Download size={14} />
+            Скачать логи (.zip)
+          </a>
         </div>
       </section>
 

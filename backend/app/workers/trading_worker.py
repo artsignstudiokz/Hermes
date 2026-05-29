@@ -275,6 +275,22 @@ class TradingWorker:
             return
 
         d = Direction.LONG if best.direction == "long" else Direction.SHORT
+
+        # Compute broker-side SL/TP from the symbol's ATR. The position
+        # then closes autonomously if the bot dies — we use 2×ATR stop
+        # and 4×ATR target (1:2 risk/reward). ATR is in price units, so
+        # adding/subtracting it from the close gives an absolute price.
+        snap = self._runner.last_snapshots.get(best.symbol)
+        sl_price: float | None = None
+        tp_price: float | None = None
+        if snap is not None and snap.atr > 0:
+            if best.direction == "long":
+                sl_price = snap.close - 2 * snap.atr
+                tp_price = snap.close + 4 * snap.atr
+            else:
+                sl_price = snap.close + 2 * snap.atr
+                tp_price = snap.close - 4 * snap.atr
+
         async with self._entry_lock:
             # Re-check quota under the lock so two ticks can't both pass
             # the early gate before either has finished placing.
@@ -284,6 +300,7 @@ class TradingWorker:
                 order = await self._adapter.place_order(OrderRequest(
                     symbol=best.symbol, direction=d, lot_size=0.01,
                     comment=f"hermes_{self._mode[:4]}_{best.symbol[:6]}",
+                    stop_loss=sl_price, take_profit=tp_price,
                 ))
             except Exception as e:  # noqa: BLE001
                 logger.warning("Auto-entry rejected for %s: %s", best.symbol, e)

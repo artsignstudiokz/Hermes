@@ -93,6 +93,14 @@ class OrderRequest:
     comment: str = ""
     magic: int = 0xBA1C0           # BAI Core magic number for trade attribution
     deviation_points: int = 20
+    # Protective levels sent directly to the broker on open. When the
+    # bot is killed (process exit, OS reboot, etc.) the broker still
+    # has the SL/TP and will close the position autonomously — this is
+    # the difference between "bot dies and position drifts forever"
+    # and "bot dies and position closes at the planned stop". Values
+    # are absolute price levels, not pips. None = no broker-side level.
+    stop_loss: float | None = None
+    take_profit: float | None = None
 
 
 @dataclass(slots=True)

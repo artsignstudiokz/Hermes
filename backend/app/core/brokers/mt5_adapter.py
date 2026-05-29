@@ -214,6 +214,14 @@ class MT5Adapter(BrokerAdapter):
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
+        # Broker-side SL/TP — survive bot crashes, OS reboots, network
+        # drops. MT5 will close the position autonomously when price
+        # touches either level. We send them as absolute prices because
+        # different brokers quote different decimal places per symbol.
+        if req.stop_loss is not None and req.stop_loss > 0:
+            request["sl"] = float(req.stop_loss)
+        if req.take_profit is not None and req.take_profit > 0:
+            request["tp"] = float(req.take_profit)
         result = await asyncio.to_thread(mt5.order_send, request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             err = result.comment if result else "send returned None"
