@@ -172,6 +172,17 @@ async def log_client_error(err: ClientError) -> None:
     )
 
 
+class ClientTrace(BaseModel):
+    stage: str
+
+
+@router.post("/trace", status_code=204)
+async def client_trace(t: ClientTrace) -> None:
+    # SPA boot-progress beacons - if WebView2 dies mid-render, the
+    # log shows the last stage that fired. See main.tsx::trace().
+    logger.info("[client-trace] %s", t.stage)
+
+
 @router.post("/check-update", response_model=UpdateCheckResponse)
 async def check_update() -> UpdateCheckResponse:
     info = await check_for_update()

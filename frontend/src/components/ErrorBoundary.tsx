@@ -17,15 +17,24 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary]", error, info.componentStack);
-    fetch("/api/system/log-client-error", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: error.message,
-        stack: error.stack ?? "",
-        component_stack: info.componentStack ?? "",
-      }),
-    }).catch(() => {});
+    // v1.0.34: sendBeacon survives a renderer tear-down; fetch did not.
+    const payload = JSON.stringify({
+      message: error.message,
+      stack: error.stack ?? "",
+      component_stack: info.componentStack ?? "",
+    });
+    try {
+      const blob = new Blob([payload], { type: "application/json" });
+      if (navigator.sendBeacon?.("/api/system/log-client-error", blob)) return;
+    } catch { /* fall through */ }
+    try {
+      fetch("/api/system/log-client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* swallow */ }
   }
 
   reset = () => {

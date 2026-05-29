@@ -49,7 +49,18 @@ function connect(sub: Subscription): void {
     } catch {
       // keep raw string
     }
-    sub.listeners.forEach((fn) => fn(data));
+    // v1.0.34: isolate each listener. If one consumer crashes on a
+    // malformed payload, the rest still get the update and the
+    // process keeps running. Previously a single throw escaped to the
+    // browser's error event and, under some WebView2 builds, took the
+    // renderer down with it.
+    sub.listeners.forEach((fn) => {
+      try {
+        fn(data);
+      } catch (err) {
+        console.error(`ws[${sub.topic}] listener crashed:`, err);
+      }
+    });
   });
 
   ws.addEventListener("close", () => {

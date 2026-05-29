@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Activity, AlertTriangle, ArrowUpRight, Brain, Coins, FlaskConical, Pause, Play, Power, RefreshCw, ShieldAlert, TrendingUp } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { trace } from "@/main";
 
 import { useAccount, useEquityHistory, useTradingStatus } from "@/api/useAccount";
 import { useBrokerHealth, useBrokers, useReconnectBroker } from "@/api/useBrokers";
@@ -34,6 +35,7 @@ import { SignalToasts } from "@/components/widgets/SignalToast";
 import { formatMoney, formatPct } from "@/lib/format";
 
 export function Dashboard() {
+  useEffect(() => { trace("Dashboard:mount"); }, []);
   const account = useAccount();
   const positions = usePositions();
   const stats = useTradeStats(30);
