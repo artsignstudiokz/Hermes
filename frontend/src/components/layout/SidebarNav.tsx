@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Bell,
+  Brain,
   Building2,
   ChevronLeft,
   Cog,
@@ -49,6 +50,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { to: "/backtest", icon: TestTube, label: "Бэктест", hint: "Прогон по истории" },
       { to: "/optimize", icon: Sparkles, label: "Оптимизация", hint: "Optuna trials" },
+      { to: "/adaptive", icon: Brain, label: "Адаптация", hint: "Walk-forward + рестрой" },
     ],
   },
   {

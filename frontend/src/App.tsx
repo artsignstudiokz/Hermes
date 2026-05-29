@@ -16,6 +16,7 @@ import { Strategy } from "@/pages/Strategy";
 import { Trades } from "@/pages/Trades";
 import { Backtest } from "@/pages/Backtest";
 import { Optimize } from "@/pages/Optimize";
+import { Adaptive } from "@/pages/Adaptive";
 import { Logs } from "@/pages/Logs";
 import { MobileLink } from "@/pages/MobileLink";
 import { Notifications } from "@/pages/Notifications";
@@ -96,6 +97,7 @@ export default function App() {
               <Route path="/trades" element={<Trades />} />
               <Route path="/backtest" element={<Backtest />} />
               <Route path="/optimize" element={<Optimize />} />
+              <Route path="/adaptive" element={<Adaptive />} />
               <Route path="/mobile" element={<MobileLink />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/logs" element={<Logs />} />
