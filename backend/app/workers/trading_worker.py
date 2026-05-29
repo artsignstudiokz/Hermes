@@ -156,6 +156,17 @@ class TradingWorker:
         self._last_tick = datetime.now(timezone.utc)
         self._tick_count += 1
 
+        # Broadcast explainable per-symbol analysis so the dashboard can
+        # show "Бот рассматривает EURUSD: trend up, MACD+, ADX 31 ⇒ LONG
+        # (уверенность 0.62)" with the full reasoning markdown. Sent
+        # before order broadcasts so the UI can correlate: this analysis
+        # → that action.
+        for report in self._runner.last_signal_reports:
+            try:
+                await self._ws.broadcast("signals", report.to_dict())
+            except Exception:  # noqa: BLE001
+                logger.debug("Failed to broadcast signal report", exc_info=True)
+
         # Pull the latest account/position/equity snapshot.
         account = await self._adapter.get_account()
         positions = await self._adapter.get_positions()

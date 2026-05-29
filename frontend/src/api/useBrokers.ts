@@ -53,3 +53,34 @@ export function useActivateBroker() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["brokers"] }),
   });
 }
+
+export interface BrokerHealth {
+  connected: boolean;
+  balance?: number;
+  equity?: number;
+  currency?: string;
+  server?: string;
+  reason?: string;
+}
+
+export function useBrokerHealth(id: number | null) {
+  return useQuery({
+    queryKey: ["broker-health", id],
+    queryFn: () => api.get<BrokerHealth>(`/api/brokers/${id}/health`),
+    enabled: id != null,
+    refetchInterval: 15_000,    // poll every 15s so silent drops surface fast
+    retry: 0,
+  });
+}
+
+export function useReconnectBroker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post<BrokerHealth>(`/api/brokers/${id}/reconnect`),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ["broker-health", id] });
+      qc.invalidateQueries({ queryKey: ["account"] });
+      qc.invalidateQueries({ queryKey: ["positions"] });
+    },
+  });
+}

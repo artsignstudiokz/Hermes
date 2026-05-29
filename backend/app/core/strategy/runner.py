@@ -19,6 +19,8 @@ import pandas as pd
 
 from app.core.brokers.base import BrokerAdapter
 from app.core.brokers.models import Direction, OrderRequest, SymbolInfo
+from app.core.strategy.indicators import IndicatorPanel
+from app.core.strategy.signals import SignalReport, build_ensemble
 
 # Make the legacy package importable for the strategy core.
 # In a PyInstaller bundle, legacy modules are already on sys.path via the
@@ -77,6 +79,17 @@ class StrategyRunner:
         self._RiskManager = RiskManager
         self._commission = commission_per_lot
 
+        # Indicator panel + signal ensemble. The ensemble runs alongside
+        # the legacy grid every tick and produces explainable SignalReport
+        # objects that the worker broadcasts on /ws/signals — this is how
+        # the dashboard shows "Бот рассматривает EURUSD: tend up, MACD+,
+        # RSI 62" in real time, with reasoning.
+        self._panel = IndicatorPanel()
+        ensemble_names = params.get("ensemble") or ["trend", "momentum"]
+        ensemble_mode = params.get("ensemble_mode") or "majority"
+        self._ensemble = build_ensemble(ensemble_names, mode=ensemble_mode)
+        self._last_reports: list[SignalReport] = []
+
     async def setup(self) -> None:
         """Resolve symbol metadata and instantiate the underlying strategy."""
         infos = await self._adapter.get_symbols(self._symbols)
@@ -104,6 +117,10 @@ class StrategyRunner:
             commission_per_lot=self._commission,
         )
 
+    @property
+    def last_signal_reports(self) -> list[SignalReport]:
+        return self._last_reports
+
     async def tick(self, dry_run: bool = False) -> list[dict]:
         """Run one analysis cycle. Returns list of actions executed.
 
@@ -121,6 +138,10 @@ class StrategyRunner:
 
         prices: dict[str, dict] = {}
         close_dict: dict[str, pd.Series] = {}
+        # Per-symbol indicator panel snapshot — fed to the ensemble below.
+        # Wrapped in try/except per pair so one broken symbol doesn't
+        # blank the dashboard for the rest.
+        panel_snaps = {}
         for pair in self._pair_cfgs:
             try:
                 df = await self._adapter.get_ohlcv(pair.symbol, self._timeframe, 300)
@@ -140,8 +161,18 @@ class StrategyRunner:
                     "trend": int(last["trend"]) if not pd.isna(last["trend"]) else 0,
                 }
                 close_dict[pair.symbol] = df["close"]
+                try:
+                    panel_snaps[pair.symbol] = self._panel.compute(pair.symbol, df)
+                except Exception:
+                    logger.debug("Indicator panel skipped for %s (not enough bars)", pair.symbol)
             except Exception:
                 logger.exception("Data fetch failed for %s", pair.symbol)
+
+        # Run the explainable ensemble on every symbol we have data for.
+        # Stored on the runner so the worker can broadcast right after.
+        self._last_reports = [
+            self._ensemble.evaluate(snap) for snap in panel_snaps.values()
+        ]
 
         if not prices:
             return []

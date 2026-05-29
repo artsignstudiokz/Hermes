@@ -25,6 +25,19 @@ class ManualOpenResult(BaseModel):
     entry_price: float | None = None
 
 
+class AnalyzeRequest(BaseModel):
+    lot_size: float = Field(default=0.01, gt=0, le=100)
+    dry_run: bool = False
+
+
+class AnalyzeResult(BaseModel):
+    opened: bool
+    reason: str
+    ticket: str | None = None
+    best: dict | None = None
+    reports: list[dict]
+
+
 @router.get("/status", response_model=TradingStatus)
 async def status_(
     svc: TradingService = Depends(get_trading_service),
@@ -82,6 +95,29 @@ async def disable_trading(
 ) -> TradingStatus:
     try:
         return TradingStatus(**svc.disable_trading())
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+
+
+@router.post("/analyze", response_model=AnalyzeResult)
+async def analyze(
+    req: AnalyzeRequest,
+    svc: TradingService = Depends(get_trading_service),
+    _vault = Depends(require_unlocked_vault),
+) -> AnalyzeResult:
+    """Scan all symbols from the active config, run the indicator
+    ensemble, pick the best signal, and either open the position
+    (dry_run=false) or return only the analysis (dry_run=true).
+    """
+    try:
+        result = await svc.analyze_and_trade(req.lot_size, req.dry_run)
+        return AnalyzeResult(
+            opened=result.get("opened", False),
+            reason=result.get("reason", ""),
+            ticket=result.get("ticket"),
+            best=result.get("best"),
+            reports=result.get("reports", []),
+        )
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
 

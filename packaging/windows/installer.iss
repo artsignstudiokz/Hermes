@@ -45,6 +45,15 @@ ShowLanguageDialog=auto
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName=Hermes
 
+; Seamless in-place upgrade. Inno detects an existing install by AppId,
+; force-closes the running Hermes.exe before replacing files, then
+; relaunches the new version when the installer finishes. Combined with
+; the data dir living in %APPDATA%\BAI Core\Hermes (outside the install
+; tree), the user keeps their vault, DB, strategies, broker config etc.
+CloseApplications=force
+CloseApplicationsFilter=Hermes.exe
+RestartApplications=yes
+
 ArchitecturesInstallIn64BitMode=x64
 
 [Languages]

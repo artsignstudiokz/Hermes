@@ -71,7 +71,14 @@ def _platform_key() -> str:
 async def check_for_update(*, timeout: float = 6.0) -> UpdateInfo:
     """Fetch the manifest and compare against current version."""
     try:
-        async with httpx.AsyncClient(timeout=timeout, headers={"User-Agent": USER_AGENT}) as client:
+        # follow_redirects=True: baicore.kz issues a 307 to www.baicore.kz —
+        # without this the update check silently fails on every poll and
+        # users never see new versions in the Settings page.
+        async with httpx.AsyncClient(
+            timeout=timeout,
+            headers={"User-Agent": USER_AGENT},
+            follow_redirects=True,
+        ) as client:
             r = await client.get(UPDATE_URL)
             r.raise_for_status()
             data = r.json()

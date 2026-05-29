@@ -138,6 +138,93 @@ class TradingService:
         self._worker.disable_trading()
         return self.status
 
+    async def analyze_and_trade(
+        self, lot_size: float = 0.01, dry_run: bool = False,
+    ) -> dict:
+        """Scan every pair from the active strategy config, run the
+        full ensemble, pick the symbol with the highest-confidence
+        non-flat signal, and open one position. The dashboard renders
+        the returned report so the user sees exactly WHY this pair,
+        WHAT indicators agreed, and the markdown reasoning.
+
+        dry_run=True returns the analysis without placing the order —
+        used by the "Глубокий анализ" preview button.
+        """
+        from app.core.brokers.models import Direction, OrderRequest
+        from app.core.strategy.indicators import IndicatorPanel
+        from app.core.strategy.signals import build_ensemble
+
+        adapter = self._registry.get_active()
+        if adapter is None:
+            raise ValueError("No active broker — connect one first")
+
+        # Load active strategy config to know which symbols + ensemble.
+        sm = get_sessionmaker()
+        async with sm() as session:
+            cfg_row = await self._active_strategy(session)
+            params = cfg_row.payload if cfg_row else {}
+        symbols = params.get("symbols") or [
+            "EURUSD", "GBPUSD", "EURCHF", "EURJPY", "USDCHF", "USDJPY",
+        ]
+        ensemble = build_ensemble(
+            params.get("ensemble") or ["trend", "mean_reversion", "breakout", "momentum"],
+            mode=params.get("ensemble_mode") or "majority",
+        )
+        panel = IndicatorPanel()
+
+        reports = []
+        for sym in symbols:
+            try:
+                df = await adapter.get_ohlcv(sym, params.get("timeframe", "1h"), 300)
+                snap = panel.compute(sym, df)
+                reports.append(ensemble.evaluate(snap))
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Analyze skipped %s: %s", sym, e)
+
+        # Sort by confidence — only act if the bot is actually convinced.
+        actionable = [r for r in reports if r.direction != "flat" and r.confidence >= 0.5]
+        actionable.sort(key=lambda r: r.confidence, reverse=True)
+
+        if not actionable:
+            return {
+                "opened": False,
+                "reason": "Ни одна пара не дала сигнал с уверенностью ≥ 0.5. Бот предпочитает подождать.",
+                "reports": [r.to_dict() for r in reports],
+            }
+
+        best = actionable[0]
+        result: dict = {
+            "opened": False,
+            "best": best.to_dict(),
+            "reports": [r.to_dict() for r in reports],
+        }
+        if dry_run:
+            result["reason"] = (
+                f"DRY-RUN: бот выбрал бы {best.symbol} ({best.direction}) с уверенностью "
+                f"{best.confidence:.2f}. Реальная сделка не открыта."
+            )
+            return result
+
+        d = Direction.LONG if best.direction == "long" else Direction.SHORT
+        try:
+            order = await adapter.place_order(OrderRequest(
+                symbol=best.symbol, direction=d, lot_size=lot_size,
+                comment=f"hermes_analyze_{best.symbol[:6]}",
+            ))
+        except Exception as e:  # noqa: BLE001
+            result["reason"] = f"Анализ выбрал {best.symbol}, но брокер отклонил ордер: {e}"
+            return result
+        if order is None:
+            result["reason"] = f"Анализ выбрал {best.symbol}, но брокер вернул None."
+            return result
+        result["opened"] = True
+        result["ticket"] = order.ticket
+        result["reason"] = (
+            f"Открыта позиция {best.direction.upper()} {best.symbol} {lot_size} лот. "
+            f"Уверенность {best.confidence:.2f}. Тикет {order.ticket}."
+        )
+        return result
+
     async def manual_open(
         self, symbol: str, direction: str, lot_size: float, comment: str = "manual_test",
     ) -> dict:

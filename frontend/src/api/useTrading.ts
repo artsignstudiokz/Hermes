@@ -76,3 +76,41 @@ export function useTestOrder() {
     },
   });
 }
+
+export interface AnalyzeReport {
+  symbol: string;
+  ts: string;
+  direction: "long" | "short" | "flat";
+  confidence: number;
+  reason: string;
+  contributing: Array<{
+    strategy: string;
+    direction: string;
+    confidence: number;
+    reason: string;
+  }>;
+  indicators: Record<string, number>;
+}
+
+export interface AnalyzeResult {
+  opened: boolean;
+  reason: string;
+  ticket: string | null;
+  best: AnalyzeReport | null;
+  reports: AnalyzeReport[];
+}
+
+export function useAnalyze() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { lot_size?: number; dry_run?: boolean }) =>
+      api.post<AnalyzeResult, { lot_size: number; dry_run: boolean }>(
+        "/api/trading/analyze",
+        { lot_size: input.lot_size ?? 0.01, dry_run: input.dry_run ?? false },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["positions"] });
+      qc.invalidateQueries({ queryKey: ["account"] });
+    },
+  });
+}

@@ -124,6 +124,27 @@ async def delete_broker(
     await session.commit()
 
 
+@router.get("/{broker_id}/health")
+async def broker_health(
+    broker_id: int,
+    registry: BrokerRegistry = Depends(get_broker_registry),
+) -> dict:
+    """Live connectivity check — used by the dashboard banner to detect
+    silent disconnects (MT5 terminal closed, auth expired, etc.).
+    """
+    return await registry.health(broker_id)
+
+
+@router.post("/{broker_id}/reconnect")
+async def broker_reconnect(
+    broker_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    registry: BrokerRegistry = Depends(get_broker_registry),
+    vault: CredentialVault = Depends(require_unlocked_vault),
+) -> dict:
+    return await registry.reconnect(broker_id, vault, session)
+
+
 @router.post("/{broker_id}/activate", response_model=BrokerOut)
 async def activate_broker(
     broker_id: int,

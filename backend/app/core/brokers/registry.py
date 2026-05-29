@@ -69,6 +69,42 @@ class BrokerRegistry:
     def active_id(self) -> int | None:
         return self._active_id
 
+    async def health(self, account_id: int) -> dict:
+        """Liveness probe — actually pokes the adapter.
+
+        We can't rely on `account_id in self._adapters` alone because the
+        SDK socket may have dropped (e.g. MT5 terminal logged out, server
+        timed us out). Calling account_info() makes the failure visible
+        right now so the UI can prompt the user to reconnect.
+        """
+        adapter = self._adapters.get(account_id)
+        if adapter is None:
+            return {"connected": False, "reason": "not_initialized"}
+        try:
+            info = await adapter.get_account()
+            return {
+                "connected": True,
+                "balance": float(info.balance),
+                "equity": float(info.equity),
+                "currency": info.currency,
+                "server": info.server,
+            }
+        except Exception as e:  # noqa: BLE001
+            logger.warning("health(%d): adapter call failed: %s", account_id, e)
+            return {"connected": False, "reason": f"{type(e).__name__}: {e}"}
+
+    async def reconnect(
+        self, account_id: int, vault: "CredentialVault", session: "AsyncSession",
+    ) -> dict:
+        """Drop the current adapter and rebuild from the vault. Returns
+        a health dict so the caller can render a precise toast / banner.
+        """
+        await self.disconnect(account_id)
+        adapter = await self.connect_from_db(account_id, vault, session)
+        if adapter is None:
+            return {"connected": False, "reason": "connect_failed"}
+        return await self.health(account_id)
+
     async def set_active(self, account_id: int) -> None:
         async with self._lock:
             if account_id not in self._adapters:

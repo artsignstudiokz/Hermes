@@ -1,13 +1,14 @@
 import { motion } from "framer-motion";
-import { Activity, ArrowUpRight, Coins, FlaskConical, Pause, Play, Power, ShieldAlert, TrendingUp, Zap, ZapOff } from "lucide-react";
+import { Activity, AlertTriangle, ArrowUpRight, Brain, Coins, FlaskConical, Pause, Play, Power, RefreshCw, ShieldAlert, TrendingUp, Zap, ZapOff } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAccount, useEquityHistory, useTradingStatus } from "@/api/useAccount";
-import { useBrokers } from "@/api/useBrokers";
+import { useBrokerHealth, useBrokers, useReconnectBroker } from "@/api/useBrokers";
 import { usePositions } from "@/api/usePositions";
 import { useTradeStats } from "@/api/useTrades";
 import {
+  useAnalyze,
   useDisableTrading,
   useEnableTrading,
   usePauseTrading,
@@ -51,11 +52,18 @@ export function Dashboard() {
   const enableTrading = useEnableTrading();
   const disableTrading = useDisableTrading();
   const testOrder = useTestOrder();
+  const analyze = useAnalyze();
+  const reconnect = useReconnectBroker();
+  const brokerHealth = useBrokerHealth(activeBroker?.id ?? null);
   const [testBusy, setTestBusy] = useState(false);
+  const [analyzeReport, setAnalyzeReport] = useState<null | {
+    reason: string; best: { symbol: string; direction: string; confidence: number; reason: string } | null;
+  }>(null);
 
   const running = status.data?.worker?.running ?? false;
   const paused = status.data?.worker?.paused ?? false;
   const tradingOn = status.data?.worker?.trading_enabled ?? false;
+  const brokerOnline = brokerHealth.data?.connected ?? null;   // null = first load
 
   const stopPct = (config.data?.payload?.stop_drawdown_pct ?? 10) / 100;
   const hardPct = (config.data?.payload?.max_portfolio_drawdown_pct ?? 20) / 100;
@@ -90,6 +98,33 @@ export function Dashboard() {
     }
   };
 
+  const onReconnect = async () => {
+    if (!activeBroker) return;
+    try {
+      const h = await reconnect.mutateAsync(activeBroker.id);
+      if (h.connected) toast.success("Брокер подключён", `Баланс ${h.balance?.toFixed(2)} ${h.currency ?? ""}`);
+      else toast.error("Не удалось подключиться", h.reason ?? "Неизвестная причина");
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Ошибка переподключения", detail);
+    }
+  };
+
+  const onAnalyze = async (dry: boolean) => {
+    try {
+      const r = await analyze.mutateAsync({ lot_size: 0.01, dry_run: dry });
+      setAnalyzeReport({ reason: r.reason, best: r.best ? {
+        symbol: r.best.symbol, direction: r.best.direction,
+        confidence: r.best.confidence, reason: r.best.reason,
+      } : null });
+      if (r.opened) toast.success("Сделка открыта по анализу", `${r.best?.symbol} ${r.best?.direction.toUpperCase()}`);
+      else toast.default(dry ? "Анализ готов" : "Бот пока ждёт", r.reason);
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Анализ не удался", detail);
+    }
+  };
+
   const onTestOrder = async () => {
     if (!activeBroker) return;
     const symbol = config.data?.payload.symbols?.[0] ?? "EURUSD";
@@ -115,6 +150,41 @@ export function Dashboard() {
       className="space-y-8"
     >
       <SignalToasts />
+
+      {activeBroker && brokerOnline === false && (
+        <div className="rounded-xl border border-hermes-wine/50 bg-hermes-wine/10 p-4 text-sm text-hermes-wine flex items-start gap-3">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <div className="font-semibold">Брокер {activeBroker.name} отключён</div>
+            <div className="mt-1 text-xs opacity-90">
+              {brokerHealth.data?.reason ?? "MT5 не отвечает. Проверьте что терминал открыт и вы вошли в счёт."}
+            </div>
+          </div>
+          <button
+            onClick={onReconnect}
+            disabled={reconnect.isPending}
+            className="inline-flex items-center gap-1 rounded-lg border border-hermes-wine/40 px-3 py-1.5 text-xs font-medium hover:bg-hermes-wine/20 disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={reconnect.isPending ? "animate-spin" : ""} />
+            Переподключиться
+          </button>
+        </div>
+      )}
+
+      {analyzeReport && (
+        <div className="rounded-xl border border-hermes-gold/40 bg-hermes-alabaster/70 p-4 text-sm">
+          <div className="flex items-start gap-3">
+            <Brain size={18} className="mt-0.5 text-hermes-gold-deep shrink-0" />
+            <div className="flex-1">
+              <div className="font-semibold gold-text">Аналитический отчёт</div>
+              <div className="mt-1 text-xs text-muted-foreground whitespace-pre-line">
+                {analyzeReport.best?.reason ?? analyzeReport.reason}
+              </div>
+            </div>
+            <button onClick={() => setAnalyzeReport(null)} className="text-xs text-muted-foreground hover:text-foreground">×</button>
+          </div>
+        </div>
+      )}
 
       <PageHeader
         eyebrow="Олимп"
@@ -147,6 +217,15 @@ export function Dashboard() {
             </Link>
           ) : (
             <>
+              <button
+                onClick={() => onAnalyze(false)}
+                disabled={analyze.isPending}
+                title="Бот проанализирует все пары, выберет лучшую и откроет позицию 0.01 с отчётом."
+                className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold-deep/60 bg-hermes-alabaster px-5 py-3 text-sm font-semibold uppercase tracking-wider hover:bg-hermes-parchment transition disabled:opacity-50"
+              >
+                <Brain size={14} className={analyze.isPending ? "animate-pulse" : ""} />
+                Анализ и сделка
+              </button>
               <button
                 onClick={onPrimary}
                 disabled={start.isPending || pause.isPending || resume.isPending}
