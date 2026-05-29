@@ -44,7 +44,10 @@ dependencies = [
 # Tests — kept minimal so CI install is fast.
 dev = [
     "pytest>=8.3,<9.0",
-    "pytest-asyncio>=0.24,<1.0",
+    # pytest-asyncio 0.25+ fixes a regression where the auto-loop
+    # fixture relied on asyncio.get_event_loop(), which no longer
+    # creates a loop on Python 3.10+. CI hit this on Python 3.11.
+    "pytest-asyncio>=0.25,<1.0",
     "pytest-mock>=3.14,<4.0",
     "ruff>=0.7,<1.0",
 ]
