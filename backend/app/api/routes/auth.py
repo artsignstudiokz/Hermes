@@ -110,6 +110,17 @@ async def unlock(
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(e)) from e
     except VaultError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e)) from e
+    # v1.0.32 silently upgrades operators away from the master-password
+    # vault: after a successful unlock we re-encrypt with the fixed
+    # app key. On the next startup try_auto_unlock() will succeed and
+    # the Unlock screen never shows again. The vault file is rewritten
+    # atomically inside _write() so a crash mid-migration leaves the
+    # old ciphertext intact (worst case: operator types the password
+    # one more time).
+    try:
+        vault.migrate_to_passwordless()
+    except Exception:  # noqa: BLE001
+        logger.exception("Vault migration to passwordless failed (non-fatal)")
     await _autoconnect_active_broker(vault, registry, session)
     return _issue(settings)
 

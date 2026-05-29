@@ -132,6 +132,25 @@ class CredentialVault:
         except Exception:
             return False
 
+    def migrate_to_passwordless(self) -> None:
+        """Re-encrypt the currently-unlocked vault with the fixed app
+        key, dropping the master password requirement going forward.
+
+        Called from /api/auth/unlock after a successful unlock so the
+        operator types the password ONCE during upgrade, then never
+        again. Idempotent: re-running on an already-passwordless vault
+        is a no-op.
+        """
+        if not self.is_unlocked:
+            raise VaultError("Vault must be unlocked before migration")
+        new_salt_bytes = new_salt()
+        new_key = derive_key(self._app_passphrase(), new_salt_bytes)
+        self._key = new_key
+        self._write(new_salt_bytes)
+        self._fail_count = 0
+        self._lockout_until = None
+        logger.info("Vault migrated to passwordless (re-encrypted with app key)")
+
     def _unlock_with_passphrase(self, passphrase: str) -> None:
         """Lower-level unlock used by both the public unlock() path and
         the auto-unlock flow. Does NOT bump the lockout counter - we
