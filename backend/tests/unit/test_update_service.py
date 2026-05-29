@@ -45,6 +45,11 @@ async def test_check_for_update_handles_unreachable(monkeypatch: pytest.MonkeyPa
 
 @pytest.mark.asyncio
 async def test_check_for_update_finds_newer(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Pin the platform key to "windows" so the test runs the same way
+    # regardless of the runner OS. Without this, CI on Linux picks the
+    # "linux" branch (which we don't ship a build for) and returns
+    # asset=None — making the assertion fail for the wrong reason.
+    monkeypatch.setattr(update_service, "_platform_key", lambda: "windows")
     payload = {
         "version": "9.9.9",
         "released_at": "2026-12-31T00:00:00Z",
