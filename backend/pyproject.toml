@@ -44,10 +44,13 @@ dependencies = [
 # Tests — kept minimal so CI install is fast.
 dev = [
     "pytest>=8.3,<9.0",
-    # pytest-asyncio 0.25+ fixes a regression where the auto-loop
-    # fixture relied on asyncio.get_event_loop(), which no longer
-    # creates a loop on Python 3.10+. CI hit this on Python 3.11.
-    "pytest-asyncio>=0.25,<1.0",
+    # pytest-asyncio 1.0 finally removed the _get_event_loop_no_warn
+    # legacy path that was crashing CI on Python 3.11 even with
+    # 0.25/0.26 (despite the version bump, the fallback was still
+    # reachable). Pin >=1.0 so the new event-loop policy is used end
+    # to end. Local pytest-asyncio 1.4 already runs clean against
+    # this suite — bump matches.
+    "pytest-asyncio>=1.0,<2.0",
     "pytest-mock>=3.14,<4.0",
     "ruff>=0.7,<1.0",
 ]
