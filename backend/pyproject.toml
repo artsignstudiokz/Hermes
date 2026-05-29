@@ -3,7 +3,10 @@ name = "hermes-backend"
 version = "1.0.0"
 description = "Hermes Trading Bot — backend (BAI Core)"
 authors = [{ name = "BAI Core", email = "info@baicore.kz" }]
-readme = "../README.md"
+# Inline readme so `pip install -e .` works without setuptools refusing
+# to reach above the package directory (../README.md). Same content as
+# the repo README, just trimmed to the package's purpose.
+readme = { content-type = "text/plain", text = "Hermes Trading Bot — backend service. See repo README for full docs." }
 requires-python = ">=3.11,<3.13"
 
 # Core runtime dependencies. MetaTrader5 is Windows-only and gated by an
