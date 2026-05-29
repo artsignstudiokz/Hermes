@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
 import { MiniSparkline } from "@/components/charts/MiniSparkline";
@@ -21,12 +20,7 @@ export function BalanceCard({ account, loading, history }: Props) {
   const sparklineData = (history ?? []).slice(-30).map((p) => p.equity);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.2, 0.65, 0.3, 1] }}
-      className="marble-card relative overflow-hidden p-6 col-span-1 md:col-span-2"
-    >
+    <div className="marble-card relative overflow-hidden p-6 col-span-1 md:col-span-2">
       <div
         aria-hidden
         className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-50"
@@ -83,7 +77,7 @@ export function BalanceCard({ account, loading, history }: Props) {
         <Sub label="Свободно" value={formatMoney(account?.free_margin ?? 0)} />
         <Sub label="Маржа" value={formatMoney(account?.margin ?? 0)} muted />
       </div>
-    </motion.div>
+    </div>
   );
 }
 

@@ -1,5 +1,3 @@
-import { motion } from "framer-motion";
-
 interface Props {
   eyebrow?: string;
   title: React.ReactNode;
@@ -11,12 +9,7 @@ interface Props {
 /** Consistent page header: eyebrow + display title + subtitle + actions slot. */
 export function PageHeader({ eyebrow, title, subtitle, actions, status }: Props) {
   return (
-    <motion.header
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end"
-    >
+    <header className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end">
       <div className="min-w-0 flex-1">
         {(eyebrow || status) && (
           <div className="flex items-center gap-3">
@@ -38,6 +31,6 @@ export function PageHeader({ eyebrow, title, subtitle, actions, status }: Props)
         )}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-    </motion.header>
+    </header>
   );
 }

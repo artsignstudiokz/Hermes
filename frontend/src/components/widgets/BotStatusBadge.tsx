@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { useTradingStatus } from "@/api/useAccount";
 
 export function BotStatusBadge() {
@@ -14,12 +13,14 @@ export function BotStatusBadge() {
     neutral: "bg-hermes-parchment/60 text-hermes-ink/60 border-hermes-gold/30",
   } as const;
 
+  // v1.0.36: pure CSS pulse via tailwind's `animate-pulse` instead of a
+  // framer-motion repeat:Infinity. Under --disable-gpu the JS-driven
+  // animation was a per-frame setState that piled up on top of every
+  // other animated component; the renderer eventually choked.
   return (
     <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium tracking-wide ${tones[tone]}`}>
-      <motion.span
-        className="h-1.5 w-1.5 rounded-full bg-current"
-        animate={running && !paused ? { opacity: [0.4, 1, 0.4] } : { opacity: 1 }}
-        transition={{ duration: 1.6, repeat: Infinity }}
+      <span
+        className={`h-1.5 w-1.5 rounded-full bg-current ${running && !paused ? "animate-pulse" : ""}`}
       />
       {label}
       {data?.worker?.tick_count ? (

@@ -2,6 +2,13 @@ import React from "react";
 
 interface Props {
   children: React.ReactNode;
+  /** When true, render a compact inline error placeholder instead of a
+   *  full-screen takeover. Used for per-section boundaries inside a
+   *  page where one widget crashing shouldn't blow up the whole layout. */
+  inline?: boolean;
+  /** Identifier traced to the backend log so we know which boundary
+   *  caught the error (useful when many small ones are nested). */
+  name?: string;
 }
 
 interface State {
@@ -19,7 +26,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     console.error("[ErrorBoundary]", error, info.componentStack);
     // v1.0.34: sendBeacon survives a renderer tear-down; fetch did not.
     const payload = JSON.stringify({
-      message: error.message,
+      message: `[${this.props.name ?? "root"}] ${error.message}`,
       stack: error.stack ?? "",
       component_stack: info.componentStack ?? "",
     });
@@ -39,11 +46,27 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   reset = () => {
     this.setState({ error: null });
-    location.reload();
+    if (!this.props.inline) location.reload();
   };
 
   render() {
     if (!this.state.error) return this.props.children;
+    if (this.props.inline) {
+      return (
+        <div className="rounded-lg border border-hermes-wine/40 bg-hermes-wine/5 p-3 text-xs text-muted-foreground">
+          <div className="font-semibold text-hermes-wine">
+            {this.props.name ? `Блок «${this.props.name}» недоступен` : "Виджет недоступен"}
+          </div>
+          <div className="mt-1 opacity-75">{this.state.error.message}</div>
+          <button
+            onClick={this.reset}
+            className="mt-2 rounded border border-hermes-wine/30 px-2 py-1 text-[10px] hover:bg-hermes-wine/10"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="grid min-h-screen place-items-center bg-background px-6">
         <div className="marble-card max-w-xl p-8 text-center">

@@ -1,8 +1,8 @@
-import { motion } from "framer-motion";
 import { Activity, AlertTriangle, ArrowUpRight, Brain, Coins, FlaskConical, Pause, Play, Power, RefreshCw, ShieldAlert, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { trace } from "@/main";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import { useAccount, useEquityHistory, useTradingStatus } from "@/api/useAccount";
 import { useBrokerHealth, useBrokers, useReconnectBroker } from "@/api/useBrokers";
@@ -179,14 +179,15 @@ export function Dashboard() {
     }
   };
 
+  // v1.0.36: Dashboard root used to be a motion.div animating opacity
+  // and translate-Y. Under WebView2 with --disable-gpu, that's a CPU-
+  // composited animation running on top of every other component
+  // animating in parallel - we suspect that was the second-render
+  // crash. Replaced with a plain div; the entry animation is gone but
+  // the page no longer kills the renderer.
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-8"
-    >
-      <SignalToasts />
+    <div className="space-y-8">
+      <ErrorBoundary inline name="Toasts"><SignalToasts /></ErrorBoundary>
 
       {activeBroker && brokerOnline === false && (
         <div className="rounded-xl border border-hermes-wine/50 bg-hermes-wine/10 p-4 text-sm text-hermes-wine flex items-start gap-3">
@@ -223,6 +224,7 @@ export function Dashboard() {
         </div>
       )}
 
+      <ErrorBoundary inline name="Шапка дашборда">
       <PageHeader
         eyebrow="Олимп"
         title={
@@ -322,153 +324,166 @@ export function Dashboard() {
           )
         }
       />
+      </ErrorBoundary>
 
       {/* Top section: BalanceCard (wide) + 2 KPIs */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <BalanceCard
-          account={account.data}
-          loading={account.isLoading}
-          history={equityHistory.data}
-        />
-        <KpiCard
-          label="P&L · 30 дней"
-          value={formatMoney(stats.data?.pnl_total ?? 0)}
-          hint={`${stats.data?.total ?? 0} сделок`}
-          delta={
-            stats.data && stats.data.pnl_total !== 0
-              ? {
-                  text: formatPct(stats.data.pnl_total / Math.max(1, account.data?.balance ?? 10000)),
-                  positive: stats.data.pnl_total > 0,
-                }
-              : undefined
-          }
-          icon={TrendingUp}
-          tone="laurel"
-          sparkline={winRateSpark}
-        />
-        <KpiCard
-          label="Win-rate"
-          value={formatPct(stats.data?.win_rate ?? 0)}
-          hint={`${stats.data?.wins ?? 0} / ${stats.data?.total ?? 0}`}
-          icon={Activity}
-          tone="aegean"
-        />
-      </section>
+      <ErrorBoundary inline name="Баланс и KPI">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <BalanceCard
+            account={account.data}
+            loading={account.isLoading}
+            history={equityHistory.data}
+          />
+          <KpiCard
+            label="P&L · 30 дней"
+            value={formatMoney(stats.data?.pnl_total ?? 0)}
+            hint={`${stats.data?.total ?? 0} сделок`}
+            delta={
+              stats.data && stats.data.pnl_total !== 0
+                ? {
+                    text: formatPct(stats.data.pnl_total / Math.max(1, account.data?.balance ?? 10000)),
+                    positive: stats.data.pnl_total > 0,
+                  }
+                : undefined
+            }
+            icon={TrendingUp}
+            tone="laurel"
+            sparkline={winRateSpark}
+          />
+          <KpiCard
+            label="Win-rate"
+            value={formatPct(stats.data?.win_rate ?? 0)}
+            hint={`${stats.data?.wins ?? 0} / ${stats.data?.total ?? 0}`}
+            icon={Activity}
+            tone="aegean"
+          />
+        </section>
+      </ErrorBoundary>
 
-      {/* Per-mode P&L breakdown - which scenario actually made money */}
-      <section className="grid gap-4 md:grid-cols-3">
-        <ModeStatsCard
-          icon={ShieldAlert}
-          tone="laurel"
-          label="Проверенный"
-          stats={statsByMode.data?.modes.proven}
-        />
-        <ModeStatsCard
-          icon={Brain}
-          tone="gold"
-          label="Автономный"
-          stats={statsByMode.data?.modes.autonomous}
-        />
-        <ModeStatsCard
-          icon={FlaskConical}
-          tone="muted"
-          label="Ручные"
-          stats={statsByMode.data?.modes.manual}
-        />
-      </section>
+      {/* Per-mode P&L breakdown */}
+      <ErrorBoundary inline name="Статистика по режимам">
+        <section className="grid gap-4 md:grid-cols-3">
+          <ModeStatsCard
+            icon={ShieldAlert}
+            tone="laurel"
+            label="Проверенный"
+            stats={statsByMode.data?.modes.proven}
+          />
+          <ModeStatsCard
+            icon={Brain}
+            tone="gold"
+            label="Автономный"
+            stats={statsByMode.data?.modes.autonomous}
+          />
+          <ModeStatsCard
+            icon={FlaskConical}
+            tone="muted"
+            label="Ручные"
+            stats={statsByMode.data?.modes.manual}
+          />
+        </section>
+      </ErrorBoundary>
 
       {/* Risk + Per-pair regimes */}
-      <section className="grid gap-6 lg:grid-cols-[1fr_2fr]">
-        <RiskGauge drawdown={drawdown} stop={stopPct} hardStop={hardPct} />
+      <ErrorBoundary inline name="Риск и состояние пар">
+        <section className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+          <RiskGauge drawdown={drawdown} stop={stopPct} hardStop={hardPct} />
 
-        {regime.data && regime.data.per_pair.length > 0 ? (
-          <div className="marble-card p-5">
-            <div className="mb-4 flex items-baseline justify-between">
-              <h3 className="display text-base font-semibold text-hermes-navy">
-                Состояние пар <span className="text-muted-foreground font-normal text-xs">· 4h</span>
-              </h3>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                {regime.data.per_pair.length} пар
-              </span>
+          {regime.data && regime.data.per_pair.length > 0 ? (
+            <div className="marble-card p-5">
+              <div className="mb-4 flex items-baseline justify-between">
+                <h3 className="display text-base font-semibold text-hermes-navy">
+                  Состояние пар <span className="text-muted-foreground font-normal text-xs">· 4h</span>
+                </h3>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {regime.data.per_pair.length} пар
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {regime.data.per_pair.map((p) => (
+                  <RegimeBadge
+                    key={p.symbol}
+                    regime={p.regime}
+                    symbol={p.symbol}
+                    confidence={p.confidence}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {regime.data.per_pair.map((p) => (
-                <RegimeBadge
-                  key={p.symbol}
-                  regime={p.regime}
-                  symbol={p.symbol}
-                  confidence={p.confidence}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="marble-card grid place-items-center p-5 text-center">
-            <p className="font-serif italic text-sm text-muted-foreground">
-              Регимы появятся когда Hermes увидит первые тики.
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* Equity chart */}
-      <section className="marble-card overflow-hidden">
-        <div className="flex items-baseline justify-between border-b border-hermes-gold/20 px-6 py-4">
-          <div>
-            <h2 className="display text-xl font-semibold text-hermes-navy">Кривая equity</h2>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Live · WebSocket</p>
-          </div>
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">30 дней</span>
-        </div>
-        {equityHistory.data && equityHistory.data.length > 1 ? (
-          <div className="px-3 py-3">
-            <EquityChart history={equityHistory.data} />
-          </div>
-        ) : (
-          <div className="grid h-72 place-items-center text-sm text-muted-foreground">
-            <div className="text-center">
-              <div className="font-serif text-2xl gold-text">Свиток ждёт первой записи</div>
-              <p className="mt-2 max-w-md text-xs">
-                График появится после нескольких циклов работы стратегии.
+          ) : (
+            <div className="marble-card grid place-items-center p-5 text-center">
+              <p className="font-serif italic text-sm text-muted-foreground">
+                Регимы появятся когда Hermes увидит первые тики.
               </p>
             </div>
+          )}
+        </section>
+      </ErrorBoundary>
+
+      {/* Equity chart */}
+      <ErrorBoundary inline name="График equity">
+        <section className="marble-card overflow-hidden">
+          <div className="flex items-baseline justify-between border-b border-hermes-gold/20 px-6 py-4">
+            <div>
+              <h2 className="display text-xl font-semibold text-hermes-navy">Кривая equity</h2>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Live · WebSocket</p>
+            </div>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">30 дней</span>
           </div>
-        )}
-      </section>
+          {equityHistory.data && equityHistory.data.length > 1 ? (
+            <div className="px-3 py-3">
+              <EquityChart history={equityHistory.data} />
+            </div>
+          ) : (
+            <div className="grid h-72 place-items-center text-sm text-muted-foreground">
+              <div className="text-center">
+                <div className="font-serif text-2xl gold-text">Свиток ждёт первой записи</div>
+                <p className="mt-2 max-w-md text-xs">
+                  График появится после нескольких циклов работы стратегии.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+      </ErrorBoundary>
 
       {/* Positions + Kill switch */}
-      <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="marble-card overflow-hidden">
-          <div className="flex items-baseline justify-between border-b border-hermes-gold/20 px-5 py-3.5">
-            <div>
-              <h3 className="display text-lg font-semibold text-hermes-navy">Открытые позиции</h3>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">Обновляется в реальном времени</p>
+      <ErrorBoundary inline name="Позиции и Kill-switch">
+        <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="marble-card overflow-hidden">
+            <div className="flex items-baseline justify-between border-b border-hermes-gold/20 px-5 py-3.5">
+              <div>
+                <h3 className="display text-lg font-semibold text-hermes-navy">Открытые позиции</h3>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Обновляется в реальном времени</p>
+              </div>
+              <span className="rounded-full bg-hermes-gold/15 px-2.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-hermes-gold-deep">
+                {positions.data?.length ?? 0} активных
+              </span>
             </div>
-            <span className="rounded-full bg-hermes-gold/15 px-2.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-hermes-gold-deep">
-              {positions.data?.length ?? 0} активных
-            </span>
+            <PositionsTable positions={positions.data ?? []} loading={positions.isLoading} />
           </div>
-          <PositionsTable positions={positions.data ?? []} loading={positions.isLoading} />
-        </div>
-        <KillSwitch />
-      </section>
+          <KillSwitch />
+        </section>
+      </ErrorBoundary>
 
-      {/* Footer KPI strip - Sharpe, Coins, Bot uptime */}
-      <section className="marble-card flex flex-wrap items-center justify-around gap-6 px-6 py-4 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <Coins size={13} className="text-hermes-gold-deep" />
-          Стратегия: {config.data?.name ?? "-"}
-        </span>
-        <span className="flex items-center gap-2">
-          <ShieldAlert size={13} className="text-hermes-bronze" />
-          Stop: {(stopPct * 100).toFixed(0)}% · Max: {(hardPct * 100).toFixed(0)}%
-        </span>
-        <span className="flex items-center gap-2">
-          <Activity size={13} className="text-hermes-laurel" />
-          Тиков: <span className="number text-foreground">{status.data?.worker?.tick_count ?? 0}</span>
-        </span>
-      </section>
-    </motion.div>
+      {/* Footer KPI strip */}
+      <ErrorBoundary inline name="Футер">
+        <section className="marble-card flex flex-wrap items-center justify-around gap-6 px-6 py-4 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <Coins size={13} className="text-hermes-gold-deep" />
+            Стратегия: {config.data?.name ?? "-"}
+          </span>
+          <span className="flex items-center gap-2">
+            <ShieldAlert size={13} className="text-hermes-bronze" />
+            Stop: {(stopPct * 100).toFixed(0)}% · Max: {(hardPct * 100).toFixed(0)}%
+          </span>
+          <span className="flex items-center gap-2">
+            <Activity size={13} className="text-hermes-laurel" />
+            Тиков: <span className="number text-foreground">{status.data?.worker?.tick_count ?? 0}</span>
+          </span>
+        </section>
+      </ErrorBoundary>
+    </div>
   );
 }
 

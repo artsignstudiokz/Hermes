@@ -1,5 +1,3 @@
-import { motion } from "framer-motion";
-
 import type { Regime } from "@/api/useAdaptive";
 
 const STYLES: Record<Regime, { label: string; cls: string; emoji: string; barClass: string }> = {
@@ -46,11 +44,9 @@ export function RegimeBadge({ regime, small, symbol, confidence }: Props) {
       {confidence != null && (
         <span className="ml-1 inline-flex items-center gap-1">
           <span className={`relative h-1 ${small ? "w-7" : "w-10"} rounded-full bg-current/15 overflow-hidden`}>
-            <motion.span
-              className={`absolute inset-y-0 left-0 rounded-full ${s.barClass}`}
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+            <span
+              className={`absolute inset-y-0 left-0 rounded-full ${s.barClass} transition-[width] duration-700 ease-out`}
+              style={{ width: `${pct}%` }}
             />
           </span>
           <span className="font-mono text-[9px] opacity-70">{pct}%</span>
