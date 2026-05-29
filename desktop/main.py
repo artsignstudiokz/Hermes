@@ -26,7 +26,6 @@ import webview
 from desktop.ipc_bridge import DesktopBridge
 from desktop.port_finder import find_free_port
 from desktop.single_instance import SingleInstance
-from desktop.splash import SplashWindow
 from desktop.window import create_window
 
 # ── Resolve resource paths (handles both `python desktop/main.py` and PyInstaller bundle) ──
@@ -39,7 +38,6 @@ def _resource_root() -> Path:
 
 ROOT = _resource_root()
 ASSETS_DIR = ROOT / "packaging" / "windows" / "assets"
-SPLASH_LOGO = ASSETS_DIR / "splash.png"
 APP_ICON = ASSETS_DIR / "app-icon.ico"
 
 # Ensure backend package is importable.
@@ -149,27 +147,30 @@ def _setup_logging() -> Path:
 
 
 def _show_error_dialog(title: str, message: str, log_file: Path | None) -> None:
-    """Show a native error dialog so the user sees *why* the app exited."""
+    """Show a native error dialog so the user sees *why* the app exited.
+
+    v1.0.38: Tkinter is gone. The Windows Event Log on the affected
+    machine pinned the boot crash on tcl86t.dll (the Tcl/Tk runtime
+    underneath Tkinter) faulting with STATUS_BREAKPOINT - the splash
+    window was running its Tk mainloop in a non-main thread, which
+    Tcl explicitly doesn't support on Windows, and tearing it down
+    when the webview signalled "loaded" was enough to take the whole
+    Python process with it. We now go straight to Win32 MessageBoxW,
+    which has zero dependencies and is what _show_error_dialog used
+    to fall back to anyway.
+    """
     full = message
     if log_file is not None:
         full += f"\n\nПолный лог: {log_file}"
-    try:
-        import tkinter as tk
-        from tkinter import messagebox
-
-        root = tk.Tk()
-        root.withdraw()
-        messagebox.showerror(title, full)
-        root.destroy()
-    except Exception:  # noqa: BLE001
-        # Tkinter unavailable — fall back to MessageBoxW on Windows.
-        if sys.platform == "win32":
-            try:
-                import ctypes
-
-                ctypes.windll.user32.MessageBoxW(0, full, title, 0x10)
-            except Exception:
-                pass
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, full, title, 0x10)
+            return
+        except Exception:  # noqa: BLE001
+            pass
+    # Non-Windows fallback: just log.
+    logging.getLogger("hermes").error("%s: %s", title, full)
 
 
 def _configure_webview2_flags() -> None:
@@ -233,19 +234,19 @@ def main() -> int:
         log.warning("Another Hermes instance is already running. Exiting.")
         return 0
 
-    # 2. Splash.
-    splash = SplashWindow(SPLASH_LOGO, brand="Hermes — Trading Bot")
-    splash.show()
+    # v1.0.38: no Tk splash. The WebView window has background_color
+    # set to the marble palette and shows up in <2s after backend ready,
+    # so the user sees the brand colour while React boots - no need
+    # for a separate Tcl/Tk window that crashed the process on close.
 
     try:
-        # 3. Backend.
+        # Backend.
         port = find_free_port()
         log.info("Starting backend on 127.0.0.1:%d", port)
         _start_backend(port)
 
-        # 4. Wait for ready.
+        # Wait for ready.
         if not _wait_for_ready(port):
-            splash.close()
             err = _BACKEND_ERROR
             if err is not None:
                 log.error("Backend failed to start: %s", err)
@@ -264,17 +265,12 @@ def main() -> int:
                 )
             return 2
 
-        # 5. Webview.
+        # Webview.
         bridge = DesktopBridge()
         url = f"http://127.0.0.1:{port}/"
         log.info("Opening main window → %s", url)
         create_window(url, bridge=bridge, icon_path=APP_ICON if APP_ICON.exists() else None)
 
-        # Close splash once webview is up.
-        def _on_loaded() -> None:
-            splash.close()
-
-        webview.windows[0].events.loaded += _on_loaded
         webview.start(debug=settings.dev_mode)
     except Exception as e:  # noqa: BLE001
         log.error("Unhandled exception in main(): %s\n%s", e, traceback.format_exc())
@@ -285,7 +281,6 @@ def main() -> int:
         )
         return 4
     finally:
-        splash.close()
         instance.release()
 
     return 0

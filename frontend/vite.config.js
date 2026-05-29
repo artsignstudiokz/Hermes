@@ -57,11 +57,11 @@ export default defineConfig(function (_a) {
         resolve: {
             alias: {
                 "@": path.resolve(__dirname, "src"),
-                // v1.0.37: replace framer-motion with a no-op shim. Trace logs
-                // pinned the WebView2 boot crash on framer-motion's per-frame
-                // work piling up under --disable-gpu, but the library is
-                // imported in 20+ places. Aliasing it lets us short-circuit the
-                // whole animation engine without rewriting every component.
+                // v1.0.37: framer-motion -> no-op shim. Kept active even though
+                // v1.0.38 identified the true root cause (Tcl/Tk in the splash
+                // thread) - the shim shrinks the bundle by 100 KB and removes
+                // a per-frame work source that was never load-bearing for the
+                // UX. Animations come back the day someone wants them.
                 "framer-motion": path.resolve(__dirname, "src/lib/framer-motion-shim.tsx"),
             },
         },

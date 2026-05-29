@@ -147,8 +147,16 @@ if IS_MAC:
     hidden_imports += ["pync"]
 
 # ── Excludes — heavy or platform-specific deps that aren't needed at runtime.
+# v1.0.38: tkinter is excluded entirely. The Tk-based splash window was
+# the boot crash root cause - tcl86t.dll faulted with STATUS_BREAKPOINT
+# on the target machine because Tcl/Tk doesn't support running its
+# mainloop in a non-main thread on Windows. Splash is gone (window
+# background_color does the job) and the error dialogs went straight
+# to ctypes MessageBoxW, so the runtime needs zero Tk.
 excludes = [
+    "tkinter",
     "tkinter.test",
+    "_tkinter",
     "test",
     "unittest",
     "yfinance",
