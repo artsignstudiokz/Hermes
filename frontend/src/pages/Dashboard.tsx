@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Activity, AlertTriangle, ArrowUpRight, Brain, Coins, FlaskConical, Pause, Play, Power, RefreshCw, ShieldAlert, TrendingUp, Zap, ZapOff } from "lucide-react";
+import { Activity, AlertTriangle, ArrowUpRight, Brain, Coins, FlaskConical, Pause, Play, Power, RefreshCw, ShieldAlert, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -9,10 +9,10 @@ import { usePositions } from "@/api/usePositions";
 import { useTradeStats } from "@/api/useTrades";
 import {
   useAnalyze,
-  useDisableTrading,
-  useEnableTrading,
   usePauseTrading,
   useResumeTrading,
+  useStartAutonomous,
+  useStartProven,
   useStartTrading,
   useStopTrading,
   useTestOrder,
@@ -46,11 +46,11 @@ export function Dashboard() {
   const equityHistory = useEquityHistory(activeBroker?.id ?? null, 30);
 
   const start = useStartTrading();
+  const startProven = useStartProven();
+  const startAutonomous = useStartAutonomous();
   const stop = useStopTrading();
   const pause = usePauseTrading();
   const resume = useResumeTrading();
-  const enableTrading = useEnableTrading();
-  const disableTrading = useDisableTrading();
   const testOrder = useTestOrder();
   const analyze = useAnalyze();
   const reconnect = useReconnectBroker();
@@ -62,7 +62,9 @@ export function Dashboard() {
 
   const running = status.data?.worker?.running ?? false;
   const paused = status.data?.worker?.paused ?? false;
-  const tradingOn = status.data?.worker?.trading_enabled ?? false;
+  const mode = status.data?.worker?.mode ?? "off";
+  const tradesToday = status.data?.worker?.trades_today ?? 0;
+  const maxTradesToday = status.data?.worker?.max_trades_per_day ?? 3;
   const brokerOnline = brokerHealth.data?.connected ?? null;   // null = first load
 
   const stopPct = (config.data?.payload?.stop_drawdown_pct ?? 10) / 100;
@@ -87,16 +89,6 @@ export function Dashboard() {
 
   const primaryLabel = !running ? "Запустить" : paused ? "Возобновить" : "Пауза";
   const PrimaryIcon = !running ? Power : paused ? Play : Pause;
-
-  const onToggleTrading = async () => {
-    try {
-      if (tradingOn) await disableTrading.mutateAsync();
-      else await enableTrading.mutateAsync();
-    } catch (err) {
-      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
-      toast.error("Не удалось переключить торговлю", detail);
-    }
-  };
 
   const onReconnect = async () => {
     if (!activeBroker) return;
@@ -215,17 +207,49 @@ export function Dashboard() {
             >
               Подключить брокера <ArrowUpRight size={14} />
             </Link>
-          ) : (
+          ) : !running ? (
             <>
               <button
-                onClick={() => onAnalyze(false)}
-                disabled={analyze.isPending}
-                title="Бот проанализирует все пары, выберет лучшую и откроет позицию 0.01 с отчётом."
-                className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold-deep/60 bg-hermes-alabaster px-5 py-3 text-sm font-semibold uppercase tracking-wider hover:bg-hermes-parchment transition disabled:opacity-50"
+                onClick={() => activeBroker && startProven.mutate(activeBroker.id)}
+                disabled={startProven.isPending || startAutonomous.isPending}
+                title="Проверенный сценарий: одна стратегия с лучшей историей, 3-5 пар, строгие условия. 1-3 сделки в день."
+                className="inline-flex items-center gap-2 rounded-xl border border-hermes-laurel/50 bg-hermes-laurel/15 px-5 py-3 text-sm font-semibold uppercase tracking-wider text-hermes-laurel hover:bg-hermes-laurel/25 transition disabled:opacity-50"
               >
-                <Brain size={14} className={analyze.isPending ? "animate-pulse" : ""} />
-                Анализ и сделка
+                <ShieldAlert size={14} /> Проверенный
               </button>
+              <button
+                onClick={() => activeBroker && startAutonomous.mutate(activeBroker.id)}
+                disabled={startProven.isPending || startAutonomous.isPending}
+                title="Развязанные руки: все стратегии и индикаторы, любая пара. Бот сам выбирает лучшее. 1-3 сделки в день."
+                className="gold-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-wider disabled:opacity-50"
+              >
+                <Brain size={16} /> Автономный
+              </button>
+              <button
+                onClick={() => onAnalyze(true)}
+                disabled={analyze.isPending}
+                title="Только анализ всех пар без сделки — посмотреть что бот думает."
+                className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-xs font-medium hover:bg-hermes-parchment transition disabled:opacity-50"
+              >
+                <Brain size={12} className={analyze.isPending ? "animate-pulse" : ""} />
+                Разовый анализ
+              </button>
+            </>
+          ) : (
+            <>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.18em] ${
+                  mode === "proven"
+                    ? "bg-hermes-laurel/15 text-hermes-laurel border border-hermes-laurel/40"
+                    : mode === "autonomous"
+                    ? "bg-hermes-gold/15 text-hermes-gold-deep border border-hermes-gold/40"
+                    : "bg-hermes-parchment/60 text-muted-foreground border border-hermes-gold/30"
+                }`}
+                title={`Сделок сегодня: ${tradesToday}/${maxTradesToday}`}
+              >
+                {mode === "proven" ? "Проверенный" : mode === "autonomous" ? "Автономный" : "Наблюдение"}
+                {" · "}{tradesToday}/{maxTradesToday}
+              </span>
               <button
                 onClick={onPrimary}
                 disabled={start.isPending || pause.isPending || resume.isPending}
@@ -233,40 +257,21 @@ export function Dashboard() {
               >
                 <PrimaryIcon size={16} /> {primaryLabel}
               </button>
-              {running && (
-                <>
-                  <button
-                    onClick={onToggleTrading}
-                    disabled={enableTrading.isPending || disableTrading.isPending}
-                    title={tradingOn
-                      ? "Бот сейчас открывает реальные сделки. Нажмите чтобы вернуться в режим наблюдения."
-                      : "Бот наблюдает за рынком, но не торгует. Нажмите чтобы разрешить открытие реальных сделок."}
-                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold uppercase tracking-wider transition disabled:opacity-50 ${
-                      tradingOn
-                        ? "border border-hermes-laurel/50 bg-hermes-laurel/15 text-hermes-laurel hover:bg-hermes-laurel/25"
-                        : "border border-hermes-gold/40 bg-hermes-alabaster text-muted-foreground hover:bg-hermes-parchment"
-                    }`}
-                  >
-                    {tradingOn ? <Zap size={14} /> : <ZapOff size={14} />}
-                    {tradingOn ? "Торговля: ВКЛ" : "Только наблюдение"}
-                  </button>
-                  <button
-                    onClick={onTestOrder}
-                    disabled={testBusy}
-                    title="Открыть пробную сделку 0.01 лота для проверки соединения с брокером."
-                    className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition disabled:opacity-50"
-                  >
-                    <FlaskConical size={14} /> Тест-сделка
-                  </button>
-                  <button
-                    onClick={() => stop.mutate()}
-                    disabled={stop.isPending}
-                    className="rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition"
-                  >
-                    Остановить
-                  </button>
-                </>
-              )}
+              <button
+                onClick={onTestOrder}
+                disabled={testBusy}
+                title="Открыть пробную сделку 0.01 лота для проверки соединения с брокером."
+                className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition disabled:opacity-50"
+              >
+                <FlaskConical size={14} /> Тест-сделка
+              </button>
+              <button
+                onClick={() => stop.mutate()}
+                disabled={stop.isPending}
+                className="rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-sm font-medium hover:bg-hermes-parchment transition"
+              >
+                Остановить
+              </button>
             </>
           )
         }

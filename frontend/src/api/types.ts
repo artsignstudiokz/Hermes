@@ -40,6 +40,8 @@ export interface Trade {
   opened_at: string;
   closed_at: string | null;
   reason: string;
+  mode: "manual" | "proven" | "autonomous";
+  signal_reason: string | null;
 }
 
 export interface Broker {
@@ -107,12 +109,17 @@ export interface ValidationResult {
   has_errors: boolean;
 }
 
+export type TradingMode = "off" | "proven" | "autonomous";
+
 export interface TradingStatus {
   broker_account_id: number | null;
   worker: {
     running: boolean;
     paused: boolean;
-    trading_enabled: boolean;
+    trading_enabled: boolean;        // legacy: derived from mode != "off"
+    mode: TradingMode;
+    trades_today: number;
+    max_trades_per_day: number;
     last_tick: string | null;
     tick_count: number;
     last_error: string | null;

@@ -49,6 +49,8 @@ async def list_trades(
             opened_at=t.opened_at.isoformat(),
             closed_at=t.closed_at.isoformat() if t.closed_at else None,
             reason=t.reason,
+            mode=t.mode,
+            signal_reason=t.signal_reason,
         )
         for t in rows
     ]

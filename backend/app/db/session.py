@@ -38,7 +38,23 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 
 
 async def init_db() -> None:
-    """Create tables on first run. For schema migrations use Alembic."""
+    """Create tables on first run + apply lightweight in-place migrations.
+
+    We don't run Alembic on startup because end-users have an opaque
+    `data/app.db` from older releases and shipping the alembic CLI in
+    a frozen build is fragile. Instead this function:
+
+      1. Creates any missing tables (no-op for existing installs).
+      2. Inspects critical tables and ALTERs in new columns that the
+         current code expects but older DBs lack. SQLite supports
+         `ALTER TABLE ADD COLUMN` for nullable / defaulted columns,
+         which covers the additive evolutions we ship.
+
+    Order matters: create_all first (so brand-new installs get the
+    full schema), then patch existing tables.
+    """
+    from sqlalchemy import inspect
+
     from app.db.base import Base
     # Import all model modules so they register with Base.metadata.
     from app.db import models  # noqa: F401
@@ -48,3 +64,18 @@ async def init_db() -> None:
         await conn.exec_driver_sql("PRAGMA journal_mode=WAL")
         await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
         await conn.run_sync(Base.metadata.create_all)
+
+        def _patch(sync_conn):
+            insp = inspect(sync_conn)
+            if "trades" not in insp.get_table_names():
+                return
+            cols = {c["name"] for c in insp.get_columns("trades")}
+            if "mode" not in cols:
+                sync_conn.exec_driver_sql(
+                    "ALTER TABLE trades ADD COLUMN mode VARCHAR(16) NOT NULL DEFAULT 'manual'"
+                )
+                sync_conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_trades_mode ON trades(mode)")
+            if "signal_reason" not in cols:
+                sync_conn.exec_driver_sql("ALTER TABLE trades ADD COLUMN signal_reason TEXT")
+
+        await conn.run_sync(_patch)

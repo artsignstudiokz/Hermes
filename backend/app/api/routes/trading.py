@@ -78,6 +78,36 @@ async def kill_switch(svc: TradingService = Depends(get_trading_service)) -> Kil
     return KillSwitchResult(closed_count=closed)
 
 
+@router.post("/start-proven", response_model=TradingStatus)
+async def start_proven(
+    req: StartRequest,
+    svc: TradingService = Depends(get_trading_service),
+    _vault = Depends(require_unlocked_vault),
+) -> TradingStatus:
+    """Start the worker in proven-scenario mode: single calibrated
+    strategy, strict confidence, restricted to 3-5 configured pairs.
+    """
+    try:
+        return TradingStatus(**(await svc.start_proven(req.broker_account_id)))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+
+
+@router.post("/start-autonomous", response_model=TradingStatus)
+async def start_autonomous(
+    req: StartRequest,
+    svc: TradingService = Depends(get_trading_service),
+    _vault = Depends(require_unlocked_vault),
+) -> TradingStatus:
+    """Start the worker in autonomous mode: full ensemble, any symbol,
+    bot picks the best entry of the day (1-3 trades max).
+    """
+    try:
+        return TradingStatus(**(await svc.start_autonomous(req.broker_account_id)))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+
+
 @router.post("/enable-trading", response_model=TradingStatus)
 async def enable_trading(
     svc: TradingService = Depends(get_trading_service),

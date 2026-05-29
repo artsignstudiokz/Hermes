@@ -121,6 +121,18 @@ class StrategyRunner:
     def last_signal_reports(self) -> list[SignalReport]:
         return self._last_reports
 
+    @property
+    def last_snapshots(self) -> dict:
+        """Per-symbol IndicatorSnapshot from the most recent tick — the
+        worker uses these to run its own per-mode ensemble (proven vs
+        autonomous), without re-fetching OHLCV.
+        """
+        return dict(self._panel.snapshots)
+
+    @property
+    def symbols(self) -> list[str]:
+        return [p.symbol for p in self._pair_cfgs]
+
     async def tick(self, dry_run: bool = False) -> list[dict]:
         """Run one analysis cycle. Returns list of actions executed.
 
@@ -223,10 +235,6 @@ class StrategyRunner:
     @property
     def grid_config(self) -> object:
         return self._grid_cfg
-
-    @property
-    def symbols(self) -> list[str]:
-        return [p.symbol for p in self._pair_cfgs]
 
     def portfolio_state(self) -> dict:
         return self._strategy.get_portfolio_state() if self._strategy else {}

@@ -46,33 +46,58 @@ class TradingWorker:
         self._last_tick: datetime | None = None
         self._last_error: str | None = None
         self._tick_count = 0
-        # Whether the worker is allowed to actually place / close orders.
-        # Default: False — the user clicks Start to begin observing the
-        # market (sync existing positions, evaluate regime, save snapshots),
-        # then explicitly toggles trading ON via /api/trading/enable-trading
-        # when they're ready. This decouples "watch the market" from
-        # "open positions" so the bot doesn't slam orders the moment Start
-        # is pressed.
-        self._trading_enabled = False
+        # Trading mode — mutually exclusive with itself by virtue of one
+        # worker per service. Values: "off" (observation only, no orders),
+        # "proven" (single calibrated strategy, strict confidence, 1-3
+        # trades/day, only on the configured 3-5 pairs), "autonomous"
+        # (full ensemble, any pair, picks the highest-confidence signal
+        # of the bar, 1-3 trades/day). Both modes obey the daily limit.
+        self._mode = "off"
+        # Per-UTC-day counter for the daily trade cap. Reset whenever the
+        # tick date changes.
+        self._day_key = ""
+        self._trades_today = 0
+        self._max_trades_per_day = 3
+        # Minimum confidence for a signal to actually open a trade.
+        # Stricter in proven mode (best historical pattern wanted),
+        # looser in autonomous (still ≥0.5 — never YOLO).
+        self._confidence_thresholds = {"proven": 0.7, "autonomous": 0.5}
 
     @property
     def state(self) -> dict:
         return {
             "running": self._task is not None and not self._task.done(),
             "paused": self._paused,
-            "trading_enabled": self._trading_enabled,
+            # Kept for back-compat with the old SPA toggle but the real
+            # source of truth is `mode`.
+            "trading_enabled": self._mode != "off",
+            "mode": self._mode,
+            "trades_today": self._trades_today,
+            "max_trades_per_day": self._max_trades_per_day,
             "last_tick": self._last_tick.isoformat() if self._last_tick else None,
             "tick_count": self._tick_count,
             "last_error": self._last_error,
         }
 
+    def set_mode(self, mode: str) -> None:
+        if mode not in ("off", "proven", "autonomous"):
+            raise ValueError(f"Unknown trading mode: {mode}")
+        self._mode = mode
+        logger.info("Trading mode = %s for account %d", mode, self._account_id)
+
+    # Kept for back-compat with the older one-toggle UI. Maps to
+    # autonomous mode (the closest analog to "live trading on").
     def enable_trading(self) -> None:
-        self._trading_enabled = True
-        logger.info("Live trading enabled for account %d", self._account_id)
+        self.set_mode("autonomous")
 
     def disable_trading(self) -> None:
-        self._trading_enabled = False
-        logger.info("Live trading disabled for account %d", self._account_id)
+        self.set_mode("off")
+
+    def _bump_day_counter(self) -> None:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        if today != self._day_key:
+            self._day_key = today
+            self._trades_today = 0
 
     async def start(self) -> None:
         if self._task and not self._task.done():
@@ -107,6 +132,100 @@ class TradingWorker:
 
     def resume(self) -> None:
         self._paused = False
+
+    async def _maybe_enter(self, sm) -> None:
+        """Pick the best signal report and possibly open ONE trade.
+
+        Order of guards (each one short-circuits the rest):
+          1. mode is "off"                       → never enter
+          2. trades_today ≥ max_trades_per_day  → daily cap hit
+          3. no actionable report                → nothing to do
+          4. confidence below per-mode floor    → bot is not convinced
+          5. proven mode: report.symbol must be in configured pairs
+        """
+        from app.db.models import TradeRow
+        from app.core.brokers.models import Direction, OrderRequest
+        from app.core.strategy.signals import build_ensemble
+
+        if self._mode == "off":
+            return
+        if self._trades_today >= self._max_trades_per_day:
+            return
+
+        # Pick which ensemble matches the mode. Proven = single calibrated
+        # strategy (trend-following with strict ADX confirm) — the closest
+        # analog to "scenario that worked on the historical chart". The
+        # autonomous ensemble combines all four strategies in majority
+        # voting and is allowed to act on any symbol.
+        if self._mode == "proven":
+            ensemble = build_ensemble(["trend"], mode="any")
+        else:  # autonomous
+            ensemble = build_ensemble(
+                ["trend", "mean_reversion", "breakout", "momentum"],
+                mode="majority",
+            )
+
+        # Re-run the ensemble against the snapshots the runner just
+        # computed — quick (no OHLCV refetch).
+        candidates = [ensemble.evaluate(snap) for snap in self._runner.last_snapshots.values()]
+        # Proven mode: restrict to the strategy's configured symbols
+        # (defaults to 3-5 majors picked at onboarding).
+        if self._mode == "proven":
+            allowed = set(self._runner.symbols)
+            candidates = [c for c in candidates if c.symbol in allowed]
+
+        actionable = [c for c in candidates
+                      if c.direction != "flat"
+                      and c.confidence >= self._confidence_thresholds[self._mode]]
+        if not actionable:
+            return
+        actionable.sort(key=lambda c: c.confidence, reverse=True)
+        best = actionable[0]
+
+        d = Direction.LONG if best.direction == "long" else Direction.SHORT
+        try:
+            order = await self._adapter.place_order(OrderRequest(
+                symbol=best.symbol, direction=d, lot_size=0.01,
+                comment=f"hermes_{self._mode[:4]}_{best.symbol[:6]}",
+            ))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Auto-entry rejected for %s: %s", best.symbol, e)
+            return
+        if order is None:
+            logger.info("Broker returned None for auto-entry on %s", best.symbol)
+            return
+
+        self._trades_today += 1
+        async with sm() as session:
+            session.add(TradeRow(
+                broker_account_id=self._account_id,
+                ticket=str(order.ticket),
+                symbol=best.symbol,
+                direction=best.direction,
+                level=0,
+                lots=0.01,
+                entry_price=getattr(order, "entry_price", 0.0),
+                opened_at=self._last_tick,
+                reason=f"auto_{self._mode}",
+                mode=self._mode,
+                signal_reason=best.reason,
+            ))
+            await session.commit()
+        await self._ws.broadcast("signals", {
+            "type": "trade_opened",
+            "mode": self._mode,
+            "symbol": best.symbol,
+            "direction": best.direction,
+            "confidence": round(best.confidence, 3),
+            "reason": best.reason,
+            "trades_today": self._trades_today,
+            "ts": self._last_tick.isoformat(),
+        })
+        logger.info(
+            "Opened %s %s in %s mode (conf=%.2f, %d/%d today)",
+            best.direction, best.symbol, self._mode, best.confidence,
+            self._trades_today, self._max_trades_per_day,
+        )
 
     async def kill_switch(self) -> int:
         """Close everything immediately, regardless of strategy state."""
@@ -144,17 +263,17 @@ class TradingWorker:
             raise
 
     async def _tick(self, sm) -> None:
-        # When trading is disabled, the runner still pulls market data and
-        # evaluates the strategy in dry-run mode — but the actual broker
-        # call is suppressed. This way the user can keep "Запустить" on
-        # to watch regime/equity update in real time, then toggle trading
-        # on when they're satisfied.
-        if self._trading_enabled:
-            actions = await self._runner.tick()
-        else:
-            actions = await self._runner.tick(dry_run=True)
+        # The grid strategy still runs but ALWAYS in dry_run — it gives
+        # us close-basket actions for managing existing legacy positions
+        # and indicator data for analysis, but it does NOT open new
+        # entries any more. New entries are made strictly through the
+        # explainable signal ensemble, gated by mode + daily limit.
+        # This is the change that stops "hermes_L0 immediately after
+        # Start" once and for all.
+        actions = await self._runner.tick(dry_run=True)
         self._last_tick = datetime.now(timezone.utc)
         self._tick_count += 1
+        self._bump_day_counter()
 
         # Broadcast explainable per-symbol analysis so the dashboard can
         # show "Бот рассматривает EURUSD: trend up, MACD+, ADX 31 ⇒ LONG
@@ -166,6 +285,12 @@ class TradingWorker:
                 await self._ws.broadcast("signals", report.to_dict())
             except Exception:  # noqa: BLE001
                 logger.debug("Failed to broadcast signal report", exc_info=True)
+
+        # Mode-driven entry decision: pick the strongest report, open ONE
+        # trade if it clears the per-mode confidence floor and we still
+        # have daily quota left. Note this is intentionally conservative
+        # — never opens on multiple pairs in the same tick.
+        await self._maybe_enter(sm)
 
         # Pull the latest account/position/equity snapshot.
         account = await self._adapter.get_account()

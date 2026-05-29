@@ -79,3 +79,7 @@ class TradeOut(BaseModel):
     opened_at: str
     closed_at: str | None
     reason: str
+    # New in v1.0.20 — surface which mode opened this trade and the full
+    # reasoning markdown so the Trades page can filter / explain.
+    mode: str = "manual"
+    signal_reason: str | None = None

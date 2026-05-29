@@ -38,12 +38,17 @@ class TradingService:
 
     @property
     def status(self) -> dict:
-        # Worker is always a dict so consumers can do .get("running") safely
-        # without a None-check. Shape matches TradingWorker.state exactly.
+        # Worker is always a dict — same shape as TradingWorker.state —
+        # so the SPA can read .mode / .trades_today without first
+        # checking if a worker exists. Default values reflect the
+        # "never started" state.
         worker_state = self._worker.state if self._worker else {
             "running": False,
             "paused": False,
             "trading_enabled": False,
+            "mode": "off",
+            "trades_today": 0,
+            "max_trades_per_day": 3,
             "last_tick": None,
             "tick_count": 0,
             "last_error": None,
@@ -136,6 +141,31 @@ class TradingService:
         if self._worker is None:
             raise ValueError("Trading worker not started")
         self._worker.disable_trading()
+        return self.status
+
+    async def start_proven(self, broker_account_id: int) -> dict:
+        """Start the worker and set it into the proven scenario mode.
+
+        Only one mode runs at a time — if the worker is already up in
+        autonomous mode we flip it; otherwise we boot the worker first
+        and then set the mode.
+        """
+        if self._worker is None or not self._worker.state["running"]:
+            await self.start(broker_account_id)
+        self._worker.set_mode("proven")  # type: ignore[union-attr]
+        return self.status
+
+    async def start_autonomous(self, broker_account_id: int) -> dict:
+        if self._worker is None or not self._worker.state["running"]:
+            await self.start(broker_account_id)
+        self._worker.set_mode("autonomous")  # type: ignore[union-attr]
+        return self.status
+
+    def set_mode(self, mode: str) -> dict:
+        """Generic mode setter used by the legacy enable/disable endpoints."""
+        if self._worker is None:
+            raise ValueError("Trading worker not started — click Start first")
+        self._worker.set_mode(mode)
         return self.status
 
     async def analyze_and_trade(
