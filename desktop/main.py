@@ -172,12 +172,47 @@ def _show_error_dialog(title: str, message: str, log_file: Path | None) -> None:
                 pass
 
 
+def _configure_webview2_flags() -> None:
+    """Tell Edge WebView2 to skip GPU acceleration.
+
+    The Chromium renderer that WebView2 wraps will, by default, send
+    canvas / WebGL / animations through the GPU process. On systems
+    with outdated Intel/AMD/NVIDIA drivers or partially-broken WDDM
+    configurations, the GPU process crashes and drags the renderer
+    down with it - which from the user's point of view looks like
+    "the window opened then immediately closed, no error dialog".
+
+    We add three switches:
+      --disable-gpu                       skip hardware acceleration entirely
+      --disable-gpu-compositing            CPU-composite the page
+      --disable-software-rasterizer        avoid the SwiftShader fallback
+                                           that can itself fault on some
+                                           VMs / RDP sessions
+    Combined effect: every paint goes through pure CPU + Skia. Charts
+    are slightly less smooth but the renderer doesn't die on machines
+    that can't reliably hand off frames to the GPU.
+    """
+    existing = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
+    flags = [
+        "--disable-gpu",
+        "--disable-gpu-compositing",
+        "--disable-software-rasterizer",
+    ]
+    extra = " ".join(flags)
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+        f"{existing} {extra}".strip() if existing else extra
+    )
+
+
 def main() -> int:
     log_file = _setup_logging()
     log = logging.getLogger("hermes")
     log.info("=" * 60)
     log.info("Hermes starting (frozen=%s, exe=%s)", getattr(sys, "frozen", False), sys.executable)
     log.info("Logs: %s", log_file)
+
+    _configure_webview2_flags()
+    log.info("WebView2 flags: %s", os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"))
 
     # 1. Single instance.
     try:

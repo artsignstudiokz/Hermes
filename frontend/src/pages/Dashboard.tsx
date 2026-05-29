@@ -35,15 +35,20 @@ import { SignalToasts } from "@/components/widgets/SignalToast";
 import { formatMoney, formatPct } from "@/lib/format";
 
 export function Dashboard() {
-  useEffect(() => { trace("Dashboard:mount"); }, []);
+  useEffect(() => { trace("Dashboard:mount-effect"); }, []);
+  trace("Dashboard:render-start");
   const account = useAccount();
+  trace("Dashboard:useAccount-done");
   const positions = usePositions();
+  trace("Dashboard:usePositions-done");
   const stats = useTradeStats(30);
   const statsByMode = useTradeStatsByMode(30);
+  trace("Dashboard:useTradeStats-done");
   const status = useTradingStatus();
   const brokers = useBrokers();
   const config = useStrategyConfig();
   const regime = useRegime();
+  trace("Dashboard:all-hooks-done");
 
   const activeBroker = brokers.data?.find((b) => b.is_active) ?? null;
   const equityHistory = useEquityHistory(activeBroker?.id ?? null, 30);
