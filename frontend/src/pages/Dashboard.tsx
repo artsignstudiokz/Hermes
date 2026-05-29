@@ -120,18 +120,55 @@ export function Dashboard() {
 
   const onTestOrder = async () => {
     if (!activeBroker) return;
-    const symbol = config.data?.payload.symbols?.[0] ?? "EURUSD";
     setTestBusy(true);
     try {
+      // v1.0.33: no hardcoded symbol/direction/lot. Backend runs the
+      // ensemble, picks the strongest signal, sizes lot at 0.5% of
+      // equity, and returns the full reasoning. The dashboard then
+      // surfaces the explanation in the analysis card.
       const r = await testOrder.mutateAsync({
-        symbol, direction: "long", lot_size: 0.01, comment: "manual_test",
+        comment: "manual_test", risk_pct: 0.5,
       });
-      toast.success("Тестовая сделка открыта", `${r.symbol} long 0.01 · ticket ${r.ticket}`);
+      toast.success(
+        "Тест-сделка открыта",
+        `${r.symbol} ${r.direction.toUpperCase()} · ${r.lot_size} лот · тикет ${r.ticket}`,
+      );
+      setAnalyzeReport({
+        reason: r.reason,
+        best: {
+          symbol: r.symbol,
+          direction: r.direction,
+          confidence: r.confidence ?? 0,
+          reason: r.reason,
+        },
+      });
     } catch (err) {
       const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
       toast.error("Тест не удался", detail);
     } finally {
       setTestBusy(false);
+    }
+  };
+
+  const onStartProven = async () => {
+    if (!activeBroker) return;
+    try {
+      await startProven.mutateAsync(activeBroker.id);
+      toast.success("Проверенный режим", "Бот анализирует пары и ищет точки входа.");
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Не удалось запустить", detail);
+    }
+  };
+
+  const onStartAutonomous = async () => {
+    if (!activeBroker) return;
+    try {
+      await startAutonomous.mutateAsync(activeBroker.id);
+      toast.success("Автономный режим", "Бот наблюдает за рынком и сам выберет лучший вход.");
+    } catch (err) {
+      const detail = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Не удалось запустить", detail);
     }
   };
 
@@ -211,7 +248,7 @@ export function Dashboard() {
           ) : !running ? (
             <div data-tour="start-buttons" className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => activeBroker && startProven.mutate(activeBroker.id)}
+                onClick={onStartProven}
                 disabled={startProven.isPending || startAutonomous.isPending}
                 title="Проверенный сценарий: одна стратегия с лучшей историей, 3-5 пар, строгие условия. 1-3 сделки в день."
                 className="inline-flex items-center gap-2 rounded-xl border border-hermes-laurel/50 bg-hermes-laurel/15 px-5 py-3 text-sm font-semibold uppercase tracking-wider text-hermes-laurel hover:bg-hermes-laurel/25 transition disabled:opacity-50"
@@ -219,7 +256,7 @@ export function Dashboard() {
                 <ShieldAlert size={14} /> Проверенный
               </button>
               <button
-                onClick={() => activeBroker && startAutonomous.mutate(activeBroker.id)}
+                onClick={onStartAutonomous}
                 disabled={startProven.isPending || startAutonomous.isPending}
                 title="Развязанные руки: все стратегии и индикаторы, любая пара. Бот сам выбирает лучшее. 1-3 сделки в день."
                 className="gold-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-wider disabled:opacity-50"

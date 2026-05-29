@@ -334,31 +334,45 @@ function useAnchorRect(selector: string | null): DOMRect | null {
       setRect(null);
       return;
     }
+    let rafId = 0;
     const measure = () => {
       try {
         const el = document.querySelector(selector);
-        if (el) setRect(el.getBoundingClientRect());
-        else setRect(null);
+        setRect(el ? el.getBoundingClientRect() : null);
       } catch {
         setRect(null);
       }
     };
+    // v1.0.33: coalesce bursts of DOM mutations through rAF. The
+    // observer fires on every WS-pushed equity / positions / signal
+    // event - hundreds per minute when the worker is running - and the
+    // pre-rAF version re-rendered the whole tutorial overlay each
+    // time, which under WebView2 manifests as a renderer freeze and
+    // (on a busy machine) a renderer-process crash. One rAF tick is
+    // enough granularity for a UI spotlight ring.
+    const schedule = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        measure();
+      });
+    };
     measure();
     const t = window.setTimeout(measure, 250);
-    const onResize = () => measure();
-    window.addEventListener("resize", onResize);
-    window.addEventListener("scroll", onResize, true);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
     let mo: MutationObserver | null = null;
     try {
-      mo = new MutationObserver(measure);
-      mo.observe(document.body, { childList: true, subtree: true, attributes: true });
+      mo = new MutationObserver(schedule);
+      mo.observe(document.body, { childList: true, subtree: true });
     } catch {
       /* MutationObserver unsupported - degrade gracefully */
     }
     return () => {
       window.clearTimeout(t);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("scroll", onResize, true);
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
       mo?.disconnect();
     };
   }, [selector]);

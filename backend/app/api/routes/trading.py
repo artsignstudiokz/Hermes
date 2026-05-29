@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -8,13 +10,19 @@ from app.deps import require_unlocked_vault
 from app.services.trading_service import TradingService, get_trading_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class ManualOpenRequest(BaseModel):
-    symbol: str = Field(min_length=1, max_length=32)
-    direction: str = Field(pattern="^(long|short)$")
-    lot_size: float = Field(gt=0, le=100)
+    # v1.0.33: all fields optional - if omitted, backend runs the
+    # ensemble, picks the best symbol/direction, and sizes lot from
+    # account equity at risk_pct% (default 0.5%). Legacy callers can
+    # still pin symbol+direction+lot_size for a routed test.
+    symbol: str | None = Field(default=None, min_length=1, max_length=32)
+    direction: str | None = Field(default=None, pattern="^(long|short)$")
+    lot_size: float | None = Field(default=None, gt=0, le=100)
     comment: str = "manual_test"
+    risk_pct: float = Field(default=0.5, gt=0, le=10)
 
 
 class ManualOpenResult(BaseModel):
@@ -23,6 +31,8 @@ class ManualOpenResult(BaseModel):
     direction: str
     lot_size: float
     entry_price: float | None = None
+    reason: str = ""
+    confidence: float | None = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -86,11 +96,23 @@ async def start_proven(
 ) -> TradingStatus:
     """Start the worker in proven-scenario mode: single calibrated
     strategy, strict confidence, restricted to 3-5 configured pairs.
+
+    v1.0.33: any backend exception is converted to a 400 with a clear
+    Russian message so the SPA can show a toast instead of getting a
+    cryptic 500. Without this catch a bad MT5 state was killing the
+    request, and the SPA's React Query default behaviour - retry +
+    swallow - left the user staring at a dead button.
     """
     try:
         return TradingStatus(**(await svc.start_proven(req.broker_account_id)))
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        logger.exception("start_proven failed")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Не удалось запустить бота: {e}",
+        ) from e
 
 
 @router.post("/start-autonomous", response_model=TradingStatus)
@@ -100,12 +122,17 @@ async def start_autonomous(
     _vault = Depends(require_unlocked_vault),
 ) -> TradingStatus:
     """Start the worker in autonomous mode: full ensemble, any symbol,
-    bot picks the best entry of the day (1-3 trades max).
-    """
+    bot picks the best entry of the day (1-3 trades max)."""
     try:
         return TradingStatus(**(await svc.start_autonomous(req.broker_account_id)))
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        logger.exception("start_autonomous failed")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Не удалось запустить бота: {e}",
+        ) from e
 
 
 @router.post("/enable-trading", response_model=TradingStatus)
@@ -159,7 +186,16 @@ async def test_order(
     _vault = Depends(require_unlocked_vault),
 ) -> ManualOpenResult:
     try:
-        result = await svc.manual_open(req.symbol, req.direction, req.lot_size, req.comment)
+        result = await svc.manual_open(
+            symbol=req.symbol, direction=req.direction, lot_size=req.lot_size,
+            comment=req.comment, risk_pct=req.risk_pct,
+        )
         return ManualOpenResult(**result)
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        logger.exception("test_order failed")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Тест-сделка не удалась: {e}",
+        ) from e

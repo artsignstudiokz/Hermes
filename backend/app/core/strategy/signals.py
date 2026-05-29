@@ -58,9 +58,10 @@ class TrendFollowingStrategy:
                 strategy=self.name, symbol=s.symbol, direction="long",
                 confidence=min(1.0, s.adx / 50.0),
                 reason=(
-                    f"EMA{50} ({s.ema_fast:.4f}) выше EMA{200} ({s.ema_slow:.4f}); "
-                    f"ADX {s.adx:.1f} ≥ {self.adx_min:.0f} (тренд устойчивый); "
-                    f"+DI {s.plus_di:.1f} > −DI {s.minus_di:.1f}."
+                    f"Быстрая EMA ({s.ema_fast:.4f}) выше медленной ({s.ema_slow:.4f}) - "
+                    f"тренд восходящий. ADX {s.adx:.1f} (порог {self.adx_min:.0f}) "
+                    f"подтверждает силу тренда. +DI {s.plus_di:.1f} превышает -DI "
+                    f"{s.minus_di:.1f} - покупатели доминируют."
                 ),
                 indicators={"ema_fast": s.ema_fast, "ema_slow": s.ema_slow,
                             "adx": s.adx, "plus_di": s.plus_di, "minus_di": s.minus_di},
@@ -70,9 +71,10 @@ class TrendFollowingStrategy:
                 strategy=self.name, symbol=s.symbol, direction="short",
                 confidence=min(1.0, s.adx / 50.0),
                 reason=(
-                    f"EMA{50} ({s.ema_fast:.4f}) ниже EMA{200} ({s.ema_slow:.4f}); "
-                    f"ADX {s.adx:.1f} ≥ {self.adx_min:.0f} (тренд устойчивый); "
-                    f"−DI {s.minus_di:.1f} > +DI {s.plus_di:.1f}."
+                    f"Быстрая EMA ({s.ema_fast:.4f}) ниже медленной ({s.ema_slow:.4f}) - "
+                    f"тренд нисходящий. ADX {s.adx:.1f} (порог {self.adx_min:.0f}) "
+                    f"подтверждает силу тренда. -DI {s.minus_di:.1f} превышает +DI "
+                    f"{s.plus_di:.1f} - продавцы доминируют."
                 ),
                 indicators={"ema_fast": s.ema_fast, "ema_slow": s.ema_slow,
                             "adx": s.adx, "plus_di": s.plus_di, "minus_di": s.minus_di},
@@ -111,9 +113,10 @@ class MeanReversionStrategy:
                 strategy=self.name, symbol=s.symbol, direction="long",
                 confidence=min(1.0, (self.rsi_oversold - s.rsi + 10) / 30.0),
                 reason=(
-                    f"BB-нижняя {s.bb_lower:.4f} коснулась, RSI {s.rsi:.1f} перепродан, "
-                    f"Stochastic %K {s.stoch_k:.1f} развернулся вверх над %D {s.stoch_d:.1f} - "
-                    f"условия для возврата к среднему."
+                    f"Цена опустилась к нижней границе Боллинджера ({s.bb_lower:.4f}). "
+                    f"RSI {s.rsi:.1f} в зоне перепроданности (порог {self.rsi_oversold}). "
+                    f"Stochastic развернулся вверх: %K {s.stoch_k:.1f} пересёк %D "
+                    f"{s.stoch_d:.1f}. Ожидается возврат к средней."
                 ),
                 indicators={"close": s.close, "bb_lower": s.bb_lower,
                             "rsi": s.rsi, "adx": s.adx,
@@ -124,9 +127,10 @@ class MeanReversionStrategy:
                 strategy=self.name, symbol=s.symbol, direction="short",
                 confidence=min(1.0, (s.rsi - self.rsi_overbought + 10) / 30.0),
                 reason=(
-                    f"BB-верхняя {s.bb_upper:.4f} коснулась, RSI {s.rsi:.1f} перекуплен, "
-                    f"Stochastic %K {s.stoch_k:.1f} развернулся вниз под %D {s.stoch_d:.1f} - "
-                    f"условия для возврата к среднему."
+                    f"Цена поднялась к верхней границе Боллинджера ({s.bb_upper:.4f}). "
+                    f"RSI {s.rsi:.1f} в зоне перекупленности (порог {self.rsi_overbought}). "
+                    f"Stochastic развернулся вниз: %K {s.stoch_k:.1f} ниже %D "
+                    f"{s.stoch_d:.1f}. Ожидается возврат к средней."
                 ),
                 indicators={"close": s.close, "bb_upper": s.bb_upper,
                             "rsi": s.rsi, "adx": s.adx,
@@ -161,8 +165,9 @@ class BreakoutStrategy:
                 strategy=self.name, symbol=s.symbol, direction="long",
                 confidence=min(1.0, s.atr_pct * 80),
                 reason=(
-                    f"Цена {s.close:.4f} пробила Donchian-хай {s.donchian_high:.4f}; "
-                    f"ATR {s.atr_pct * 100:.2f}% выше порога - пробой подтверждён."
+                    f"Цена {s.close:.4f} пробила верхнюю границу канала Дончиана "
+                    f"({s.donchian_high:.4f}). Волатильность ATR {s.atr_pct * 100:.2f}% "
+                    f"подтверждает: пробой реальный, не шум."
                 ),
                 indicators={"close": s.close, "donchian_high": s.donchian_high,
                             "atr": s.atr, "atr_pct": s.atr_pct},
@@ -172,8 +177,9 @@ class BreakoutStrategy:
                 strategy=self.name, symbol=s.symbol, direction="short",
                 confidence=min(1.0, s.atr_pct * 80),
                 reason=(
-                    f"Цена {s.close:.4f} пробила Donchian-лоу {s.donchian_low:.4f}; "
-                    f"ATR {s.atr_pct * 100:.2f}% выше порога - пробой подтверждён."
+                    f"Цена {s.close:.4f} пробила нижнюю границу канала Дончиана "
+                    f"({s.donchian_low:.4f}). Волатильность ATR {s.atr_pct * 100:.2f}% "
+                    f"подтверждает: пробой реальный, не шум."
                 ),
                 indicators={"close": s.close, "donchian_low": s.donchian_low,
                             "atr": s.atr, "atr_pct": s.atr_pct},
@@ -196,9 +202,9 @@ class MomentumStrategy:
                 strategy=self.name, symbol=s.symbol, direction="long",
                 confidence=min(1.0, abs(s.macd_hist) * 100),
                 reason=(
-                    f"MACD-гистограмма {s.macd_hist:+.5f} положительна; "
-                    f"Stochastic %K {s.stoch_k:.1f} пересёк %D {s.stoch_d:.1f} вверх; "
-                    f"импульс направлен наверх."
+                    f"Гистограмма MACD {s.macd_hist:+.5f} положительна - импульс "
+                    f"растёт. Stochastic %K {s.stoch_k:.1f} пересёк %D {s.stoch_d:.1f} "
+                    f"снизу вверх. Движение наверх набирает обороты."
                 ),
                 indicators={"macd_hist": s.macd_hist, "stoch_k": s.stoch_k, "stoch_d": s.stoch_d},
             )
@@ -207,9 +213,9 @@ class MomentumStrategy:
                 strategy=self.name, symbol=s.symbol, direction="short",
                 confidence=min(1.0, abs(s.macd_hist) * 100),
                 reason=(
-                    f"MACD-гистограмма {s.macd_hist:+.5f} отрицательна; "
-                    f"Stochastic %K {s.stoch_k:.1f} опустился ниже %D {s.stoch_d:.1f}; "
-                    f"импульс направлен вниз."
+                    f"Гистограмма MACD {s.macd_hist:+.5f} отрицательна - импульс "
+                    f"падает. Stochastic %K {s.stoch_k:.1f} пересёк %D {s.stoch_d:.1f} "
+                    f"сверху вниз. Движение вниз набирает обороты."
                 ),
                 indicators={"macd_hist": s.macd_hist, "stoch_k": s.stoch_k, "stoch_d": s.stoch_d},
             )
@@ -310,8 +316,8 @@ class StrategyEnsemble:
                 direction="flat",
                 confidence=0.0,
                 reason=(
-                    f"Стратегии разошлись во мнениях, открывать не безопасно ({self.mode}-режим).\n\n"
-                    f"{reasons}"
+                    f"Стратегии разошлись во мнениях - открывать небезопасно "
+                    f"(режим голосования: {self.mode}).\n\n{reasons}"
                 ),
                 contributing=[s.to_dict() for s in signals],
                 indicators=_snap_to_dict(snap),
@@ -321,8 +327,9 @@ class StrategyEnsemble:
         direction: Direction = chosen[0].direction
         reasons = "\n".join(f"• **{s.strategy}**: {s.reason}" for s in chosen)
         head = (
-            f"**{direction.upper()}** по {snap.symbol} - "
-            f"{len(chosen)} из {total} стратегий согласны (уверенность {avg_conf:.2f})."
+            f"**{direction.upper()}** по {snap.symbol}: "
+            f"{len(chosen)} из {total} стратегий согласны "
+            f"(средняя уверенность {avg_conf:.2f})."
         )
         return SignalReport(
             symbol=snap.symbol,

@@ -22,6 +22,23 @@ from app.db.session import get_sessionmaker
 logger = logging.getLogger(__name__)
 
 
+def _scale_lot(equity: float, risk_pct: float = 0.5, min_lot: float = 0.01) -> float:
+    """Crude position-sizing: lot ≈ equity * risk_pct% / 100k.
+
+    Standard forex contract size is 100k of base currency; 1% of equity
+    on a 1:100 leveraged FX major roughly equals 0.01 lot per $1000 of
+    equity. We deliberately keep this conservative - the bot's daily
+    cap of 3 trades plus the 2*ATR broker-side stop already constrain
+    downside, so the lot is just a "how much skin in the game" knob.
+
+    Floors at min_lot because most retail brokers reject sub-0.01 lots.
+    """
+    if equity <= 0:
+        return min_lot
+    raw = equity * (risk_pct / 100.0) / 100_000.0
+    return max(min_lot, round(raw, 2))
+
+
 class TradingWorker:
     """Long-running async loop. Cancellable via stop()."""
 
@@ -135,29 +152,35 @@ class TradingWorker:
     async def start(self) -> None:
         if self._task and not self._task.done():
             return
-        await self._runner.setup()
+        # v1.0.33: keep this path FAST. Anything that does a network
+        # round-trip (runner.setup, MT5 get_account, MT5 OHLCV) is
+        # deferred into the background _run() loop so the HTTP request
+        # that started the worker returns in milliseconds. Previously
+        # we awaited the first tick (15-30s of MT5 calls) inline, which
+        # kept the FastAPI request blocked long enough for WebView2 to
+        # decide the page was hung and tear down the renderer.
         self._stop_evt.clear()
-        # Seed risk engine with the starting equity so daily-loss is
-        # measured from "the moment trading began this session", not
-        # from a stale value.
+        self._task = asyncio.create_task(self._run_boot(), name="hermes-trading-worker")
+        logger.info(
+            "Trading worker scheduled for account %d (mode=%s)",
+            self._account_id, self._mode,
+        )
+
+    async def _run_boot(self) -> None:
+        """Background-only boot: runner setup + risk seed + first tick,
+        then hand off to the normal _run loop. Wrapped in broad try so
+        a bad symbol / MT5 hiccup never escapes back to the asyncio
+        event loop (which would kill the worker task silently)."""
+        try:
+            await self._runner.setup()
+        except Exception:
+            logger.exception("Runner setup failed - worker will retry on first tick")
         try:
             account = await self._adapter.get_account()
             self._risk.reset(float(account.equity))
         except Exception:  # noqa: BLE001
             logger.warning("Could not seed risk engine on start - will use first tick equity")
-
-        # Seed an immediate observation tick so existing broker positions
-        # and balance show up on the Dashboard at once.
-        sm = get_sessionmaker()
-        try:
-            await self._tick(sm)
-        except Exception:
-            logger.exception("Initial observation tick failed (will retry on schedule)")
-        self._task = asyncio.create_task(self._run(), name="hermes-trading-worker")
-        logger.info(
-            "Trading worker started for account %d (trading_enabled=%s)",
-            self._account_id, self._trading_enabled,
-        )
+        await self._run()
 
     async def stop(self) -> None:
         self._stop_evt.set()
@@ -344,6 +367,12 @@ class TradingWorker:
                 sl_price = snap.close + 2 * snap.atr
                 tp_price = snap.close - 4 * snap.atr
 
+        # Risk-scaled lot: target ~0.5% of equity per trade. Floors at
+        # 0.01 lot (broker minimum on Exness FX majors). The risk engine
+        # already vetoed if equity is dangerously low, so we just scale.
+        equity = float(self._risk.last_equity or 0.0)
+        lot_size = _scale_lot(equity, risk_pct=0.5)
+
         async with self._entry_lock:
             # Re-check quota under the lock so two ticks can't both pass
             # the early gate before either has finished placing.
@@ -351,7 +380,7 @@ class TradingWorker:
                 return
             try:
                 order = await self._adapter.place_order(OrderRequest(
-                    symbol=best.symbol, direction=d, lot_size=0.01,
+                    symbol=best.symbol, direction=d, lot_size=lot_size,
                     comment=f"hermes_{self._mode[:4]}_{best.symbol[:6]}",
                     stop_loss=sl_price, take_profit=tp_price,
                 ))
@@ -373,7 +402,7 @@ class TradingWorker:
                 symbol=best.symbol,
                 direction=best.direction,
                 level=0,
-                lots=0.01,
+                lots=lot_size,
                 entry_price=getattr(order, "entry_price", 0.0),
                 opened_at=self._last_tick,
                 reason=f"auto_{self._mode}",

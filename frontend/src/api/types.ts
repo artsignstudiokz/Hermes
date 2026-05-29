@@ -133,10 +133,13 @@ export interface TradingStatus {
 }
 
 export interface ManualOrderInput {
-  symbol: string;
-  direction: "long" | "short";
-  lot_size: number;
+  // All optional - if omitted the backend runs the ensemble, picks the
+  // best symbol/direction, and sizes lot at risk_pct% of equity.
+  symbol?: string;
+  direction?: "long" | "short";
+  lot_size?: number;
   comment?: string;
+  risk_pct?: number;
 }
 
 export interface ManualOrderResult {
@@ -145,6 +148,8 @@ export interface ManualOrderResult {
   direction: string;
   lot_size: number;
   entry_price: number | null;
+  reason: string;
+  confidence: number | null;
 }
 
 export interface TradeStats {

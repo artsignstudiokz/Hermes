@@ -266,31 +266,116 @@ class TradingService:
         return result
 
     async def manual_open(
-        self, symbol: str, direction: str, lot_size: float, comment: str = "manual_test",
+        self,
+        symbol: str | None = None,
+        direction: str | None = None,
+        lot_size: float | None = None,
+        comment: str = "manual_test",
+        risk_pct: float = 0.5,
     ) -> dict:
-        """Place a single test order regardless of trading_enabled.
+        """One-shot test trade with full reasoning.
 
-        Used by the "Тестовая сделка" button so the operator can verify
-        broker connectivity / order routing without flipping the bot's
-        trading toggle on. Bypasses the strategy entirely.
+        v1.0.33: instead of a hardcoded 0.01 lot on the first configured
+        symbol, this now:
+          1. Runs the same indicator ensemble used in autonomous mode
+             across every configured pair.
+          2. Picks the strongest non-flat signal (≥0.4 confidence so
+             we don't open garbage).
+          3. Sizes the lot from the live account equity at risk_pct%
+             of equity (default 0.5%, with a 0.01 lot floor).
+          4. Returns a human-readable reason explaining WHY this symbol,
+             this direction, this size - the operator sees it in a
+             dashboard toast.
+
+        Old call-shape is still supported: passing explicit symbol /
+        direction / lot_size bypasses the analysis and just routes the
+        order. Used by tests.
         """
         from app.core.brokers.models import Direction, OrderRequest
+        from app.core.strategy.indicators import IndicatorPanel
+        from app.core.strategy.signals import build_ensemble
+        from app.workers.trading_worker import _scale_lot
 
         adapter = self._registry.get_active()
         if adapter is None:
             raise ValueError("No active broker - connect one first")
-        d = Direction.LONG if direction.lower() == "long" else Direction.SHORT
+
+        # Explicit-args path (legacy / tests).
+        if symbol and direction and lot_size:
+            d = Direction.LONG if direction.lower() == "long" else Direction.SHORT
+            order = await adapter.place_order(OrderRequest(
+                symbol=symbol, direction=d, lot_size=lot_size, comment=comment,
+            ))
+            if order is None:
+                raise ValueError(f"Broker rejected the order for {symbol}")
+            return {
+                "ticket": str(order.ticket),
+                "symbol": symbol,
+                "direction": direction,
+                "lot_size": lot_size,
+                "entry_price": getattr(order, "entry_price", None),
+                "reason": "Ручной тест: символ и направление переданы напрямую.",
+                "confidence": None,
+            }
+
+        # Analysis path - choose symbol + direction from the ensemble.
+        sm = get_sessionmaker()
+        async with sm() as session:
+            cfg_row = await self._active_strategy(session)
+            params = cfg_row.payload if cfg_row else {}
+        symbols = params.get("symbols") or [
+            "EURUSD", "GBPUSD", "EURCHF", "EURJPY", "USDCHF", "USDJPY",
+        ]
+        ensemble = build_ensemble(
+            params.get("ensemble") or ["trend", "momentum"],
+            mode=params.get("ensemble_mode") or "majority",
+        )
+        panel = IndicatorPanel()
+
+        reports = []
+        for sym in symbols:
+            try:
+                df = await adapter.get_ohlcv(sym, params.get("timeframe", "1h"), 300)
+                snap = panel.compute(sym, df)
+                reports.append(ensemble.evaluate(snap))
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Test-trade analyze skipped %s: %s", sym, e)
+
+        actionable = [r for r in reports if r.direction != "flat" and r.confidence >= 0.4]
+        actionable.sort(key=lambda r: r.confidence, reverse=True)
+        if not actionable:
+            raise ValueError(
+                "Ни одна пара не дала достаточно уверенного сигнала "
+                "(порог 0.4). Подождите немного и попробуйте снова."
+            )
+        best = actionable[0]
+
+        # Lot sizing from live equity.
+        try:
+            account = await adapter.get_account()
+            equity = float(account.equity)
+        except Exception:
+            equity = 0.0
+        lot_size = _scale_lot(equity, risk_pct=risk_pct)
+
+        d = Direction.LONG if best.direction == "long" else Direction.SHORT
         order = await adapter.place_order(OrderRequest(
-            symbol=symbol, direction=d, lot_size=lot_size, comment=comment,
+            symbol=best.symbol, direction=d, lot_size=lot_size, comment=comment,
         ))
         if order is None:
-            raise ValueError(f"Broker rejected the order for {symbol}")
+            raise ValueError(f"Брокер отклонил ордер на {best.symbol}")
         return {
-            "ticket": order.ticket,
-            "symbol": symbol,
-            "direction": direction,
+            "ticket": str(order.ticket),
+            "symbol": best.symbol,
+            "direction": best.direction,
             "lot_size": lot_size,
             "entry_price": getattr(order, "entry_price", None),
+            "reason": (
+                f"Размер позиции {lot_size} лот — это около {risk_pct}% от текущего эквити "
+                f"({equity:.2f}). Бот выбрал {best.symbol} {best.direction.upper()} "
+                f"с уверенностью {best.confidence:.2f}.\n\n{best.reason}"
+            ),
+            "confidence": round(best.confidence, 3),
         }
 
     async def _active_strategy(self, session: AsyncSession) -> StrategyConfigRow | None:
