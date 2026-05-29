@@ -62,6 +62,15 @@ class TradingWorker:
         # Stricter in proven mode (best historical pattern wanted),
         # looser in autonomous (still ≥0.5 — never YOLO).
         self._confidence_thresholds = {"proven": 0.7, "autonomous": 0.5}
+        # Pre-built ensembles. Constructed once on mode change instead of
+        # every tick — `build_ensemble` instantiates strategy objects so
+        # rebuilding 1× per minute is wasteful and shows up in profiles
+        # over a 12-hour session.
+        self._ensemble_cache: dict = {}
+        # Guard for the entry path — prevents a second tick from racing
+        # ahead and double-opening when MT5 place_order is slow (some
+        # brokers take 2-3s to respond).
+        self._entry_lock = asyncio.Lock()
 
     @property
     def state(self) -> dict:
@@ -83,6 +92,15 @@ class TradingWorker:
         if mode not in ("off", "proven", "autonomous"):
             raise ValueError(f"Unknown trading mode: {mode}")
         self._mode = mode
+        # Ensure the ensemble for this mode is ready ahead of next tick.
+        if mode in ("proven", "autonomous") and mode not in self._ensemble_cache:
+            from app.core.strategy.signals import build_ensemble
+            if mode == "proven":
+                self._ensemble_cache[mode] = build_ensemble(["trend"], mode="any")
+            else:
+                self._ensemble_cache[mode] = build_ensemble(
+                    ["trend", "mean_reversion", "breakout", "momentum"], mode="majority",
+                )
         logger.info("Trading mode = %s for account %d", mode, self._account_id)
 
     # Kept for back-compat with the older one-toggle UI. Maps to
@@ -142,28 +160,24 @@ class TradingWorker:
           3. no actionable report                → nothing to do
           4. confidence below per-mode floor    → bot is not convinced
           5. proven mode: report.symbol must be in configured pairs
+
+        Wrapped in self._entry_lock so a slow MT5 place_order can't be
+        racing with the next 60-second tick — that's what caused dupe
+        opens on the same minute in early bench testing.
         """
         from app.db.models import TradeRow
         from app.core.brokers.models import Direction, OrderRequest
-        from app.core.strategy.signals import build_ensemble
 
         if self._mode == "off":
             return
+        if self._entry_lock.locked():
+            return     # previous tick's place_order still in flight
         if self._trades_today >= self._max_trades_per_day:
             return
 
-        # Pick which ensemble matches the mode. Proven = single calibrated
-        # strategy (trend-following with strict ADX confirm) — the closest
-        # analog to "scenario that worked on the historical chart". The
-        # autonomous ensemble combines all four strategies in majority
-        # voting and is allowed to act on any symbol.
-        if self._mode == "proven":
-            ensemble = build_ensemble(["trend"], mode="any")
-        else:  # autonomous
-            ensemble = build_ensemble(
-                ["trend", "mean_reversion", "breakout", "momentum"],
-                mode="majority",
-            )
+        ensemble = self._ensemble_cache.get(self._mode)
+        if ensemble is None:
+            return     # set_mode wasn't called — defensive
 
         # Re-run the ensemble against the snapshots the runner just
         # computed — quick (no OHLCV refetch).
@@ -183,19 +197,27 @@ class TradingWorker:
         best = actionable[0]
 
         d = Direction.LONG if best.direction == "long" else Direction.SHORT
-        try:
-            order = await self._adapter.place_order(OrderRequest(
-                symbol=best.symbol, direction=d, lot_size=0.01,
-                comment=f"hermes_{self._mode[:4]}_{best.symbol[:6]}",
-            ))
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Auto-entry rejected for %s: %s", best.symbol, e)
-            return
-        if order is None:
-            logger.info("Broker returned None for auto-entry on %s", best.symbol)
-            return
+        async with self._entry_lock:
+            # Re-check quota under the lock so two ticks can't both pass
+            # the early gate before either has finished placing.
+            if self._trades_today >= self._max_trades_per_day:
+                return
+            try:
+                order = await self._adapter.place_order(OrderRequest(
+                    symbol=best.symbol, direction=d, lot_size=0.01,
+                    comment=f"hermes_{self._mode[:4]}_{best.symbol[:6]}",
+                ))
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Auto-entry rejected for %s: %s", best.symbol, e)
+                return
+            if order is None:
+                logger.info("Broker returned None for auto-entry on %s", best.symbol)
+                return
+            # Increment under the same lock — closes the race where two
+            # concurrent ticks could both place_order before either bumps
+            # the counter.
+            self._trades_today += 1
 
-        self._trades_today += 1
         async with sm() as session:
             session.add(TradeRow(
                 broker_account_id=self._account_id,

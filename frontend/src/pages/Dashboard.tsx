@@ -208,7 +208,7 @@ export function Dashboard() {
               Подключить брокера <ArrowUpRight size={14} />
             </Link>
           ) : !running ? (
-            <>
+            <div data-tour="start-buttons" className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => activeBroker && startProven.mutate(activeBroker.id)}
                 disabled={startProven.isPending || startAutonomous.isPending}
@@ -226,6 +226,7 @@ export function Dashboard() {
                 <Brain size={16} /> Автономный
               </button>
               <button
+                data-tour="analyze-btn"
                 onClick={() => onAnalyze(true)}
                 disabled={analyze.isPending}
                 title="Только анализ всех пар без сделки — посмотреть что бот думает."
@@ -234,7 +235,7 @@ export function Dashboard() {
                 <Brain size={12} className={analyze.isPending ? "animate-pulse" : ""} />
                 Разовый анализ
               </button>
-            </>
+            </div>
           ) : (
             <>
               <span

@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { Toaster } from "@/components/ui/Toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Tutorial, shouldShowTutorial } from "@/components/Tutorial/Tutorial";
 import { Unlock } from "@/pages/Unlock";
 import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
@@ -30,6 +31,10 @@ interface AuthState {
 export default function App() {
   const [bootState, setBootState] = useState<"splash" | "ready">("splash");
   const [auth, setAuth] = useState<AuthState | null>(null);
+  // Tutorial visibility — read once on boot. We deliberately don't read
+  // localStorage on every render; once dismissed, it stays dismissed for
+  // this session even before the flag persists.
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -39,7 +44,10 @@ export default function App() {
         if (active) {
           setAuth(s);
           await new Promise((r) => setTimeout(r, 700));
-          if (active) setBootState("ready");
+          if (active) {
+            setBootState("ready");
+            if (shouldShowTutorial()) setTutorialOpen(true);
+          }
         }
       } catch {
         setTimeout(() => location.reload(), 1500);
@@ -99,6 +107,7 @@ export default function App() {
         </Routes>
       </Suspense>
       </ErrorBoundary>
+      <Tutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </div>
   );
 }

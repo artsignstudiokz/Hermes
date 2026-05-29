@@ -169,10 +169,13 @@ def test_worker_set_mode_validates():
     w = TradingWorker.__new__(TradingWorker)
     w._mode = "off"
     w._account_id = 1
+    w._ensemble_cache = {}     # populated lazily by set_mode
     w.set_mode("proven")
     assert w._mode == "proven"
+    assert "proven" in w._ensemble_cache
     w.set_mode("autonomous")
     assert w._mode == "autonomous"
+    assert "autonomous" in w._ensemble_cache
     w.set_mode("off")
     assert w._mode == "off"
     with pytest.raises(ValueError):
