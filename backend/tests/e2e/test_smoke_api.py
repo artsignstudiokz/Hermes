@@ -15,27 +15,20 @@ async def test_health(http_client) -> None:
 
 
 @pytest.mark.asyncio
-async def test_first_run_setup_unlock(http_client) -> None:
+async def test_passwordless_auto_unlock_and_state(http_client) -> None:
+    # v1.0.31: passwordless vault is auto-created and auto-unlocked at
+    # lifecycle. /api/auth/state should report first_run=False (no UI
+    # gate) and locked=False (already unlocked) without any setup call.
     state = (await http_client.get("/api/auth/state")).json()
-    assert state["first_run"] is True
-    assert state["locked"] is True
+    assert state["first_run"] is False
+    assert state["locked"] is False
 
-    r = await http_client.post(
-        "/api/auth/setup-master-password", json={"master_password": "test-pwd-123"},
-    )
-    assert r.status_code == 200
-    token = r.json()["token"]
-    assert token
-
-    state2 = (await http_client.get("/api/auth/state")).json()
-    assert state2["first_run"] is False
-
-    # Lock then unlock with the same password.
+    # Lock can still be called explicitly (e.g. operator wants to
+    # re-protect during a sensitive moment), but a fresh state read
+    # after a lock should still report locked=True until unlock fires.
     await http_client.post("/api/auth/lock")
-    r2 = await http_client.post(
-        "/api/auth/unlock", json={"master_password": "test-pwd-123"},
-    )
-    assert r2.status_code == 200
+    state2 = (await http_client.get("/api/auth/state")).json()
+    assert state2["locked"] is True
 
 
 @pytest.mark.asyncio

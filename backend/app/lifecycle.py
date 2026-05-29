@@ -31,6 +31,24 @@ async def lifespan(app: FastAPI):
 
     # Vault + broker registry + trading/backtest/optimize service singletons.
     vault = get_vault()
+
+    # Passwordless mode (v1.0.31+): no master-password screen for fresh
+    # installs. Create or auto-unlock with the fixed app-derived key so
+    # the operator goes straight from splash to Dashboard. Users who
+    # previously set a master password keep the old unlock flow - we
+    # never overwrite or migrate their vault without consent.
+    if not vault.exists():
+        try:
+            vault.create_passwordless()
+            logger.info("Auto-created passwordless vault on first run")
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to auto-create passwordless vault")
+    else:
+        if vault.try_auto_unlock():
+            logger.info("Auto-unlocked vault with app key (passwordless mode)")
+        else:
+            logger.info("Vault is password-protected; awaiting user unlock")
+
     registry: BrokerRegistry = get_broker_registry()
     notifier = init_notification_service(vault, settings)
     init_trading_service(registry, vault, notifier)
@@ -41,6 +59,20 @@ async def lifespan(app: FastAPI):
     app.state.scheduler = scheduler
     app.state.settings = settings
     app.state.is_ready = True
+
+    # If vault auto-unlocked (passwordless mode), bring up the active
+    # broker so the Dashboard renders with balance/positions on first
+    # load - mirrors what /api/auth/unlock does for password vaults.
+    if vault.is_unlocked:
+        try:
+            from app.api.routes.auth import _autoconnect_active_broker
+            from app.db.session import get_sessionmaker
+
+            sm = get_sessionmaker()
+            async with sm() as session:
+                await _autoconnect_active_broker(vault, registry, session)
+        except Exception:  # noqa: BLE001
+            logger.exception("Auto-connect on lifespan failed (non-fatal)")
 
     try:
         yield

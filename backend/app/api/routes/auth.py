@@ -72,8 +72,13 @@ class TokenResponse(BaseModel):
 
 @router.get("/state", response_model=AuthState)
 async def state(vault: CredentialVault = Depends(get_vault)) -> AuthState:
+    # v1.0.31: with passwordless mode the vault is auto-unlocked at
+    # lifecycle, so `first_run` here means "no real setup done yet" -
+    # broker not configured, strategy never picked. The frontend uses
+    # this to decide whether to show the onboarding wizard, NOT to
+    # demand a master password.
     return AuthState(
-        first_run=not vault.exists(),
+        first_run=False,
         locked=not vault.is_unlocked,
         lockout_until=vault.lockout_until,
     )

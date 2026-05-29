@@ -21,6 +21,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Derive version from tag
+        id: ver
+        shell: pwsh
+        run: |
+          # github.ref_name is "v1.0.30" for tag pushes, or the manual
+          # input on workflow_dispatch. Strip leading 'v' and validate
+          # semver-ish. Pin to "1.0.0" if neither source has a value.
+          $raw = "${{ github.event.inputs.version }}"
+          if (-not $raw) { $raw = "${{ github.ref_name }}" }
+          $clean = $raw -replace '^v', ''
+          if ($clean -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') {
+            Write-Host "Falling back to 1.0.0 because tag '$raw' isn't a semver"
+            $clean = "1.0.0"
+          }
+          Write-Host "Building version: $clean"
+          "version=$clean" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Inject version into source
+        shell: pwsh
+        env:
+          BUILD_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          # 1) backend/app/__init__.py - drives the Settings "current
+          #    version" line and the User-Agent the update checker
+          #    sends to baicore.kz.
+          $initPath = "backend/app/__init__.py"
+          $init = Get-Content $initPath -Raw
+          $init = $init -replace '__version__\s*=\s*"[^"]*"', "__version__ = `"$env:BUILD_VERSION`""
+          Set-Content $initPath $init -NoNewline -Encoding utf8
+          Write-Host "Patched __init__.py:"
+          Get-Content $initPath | Select-String "version"
+
+          # 2) installer.iss - drives AppVersion, the output filename
+          #    (Hermes-Setup-X.Y.Z.exe), and the Add/Remove Programs
+          #    entry.
+          $issPath = "packaging/windows/installer.iss"
+          $iss = Get-Content $issPath -Raw
+          $iss = $iss -replace '#define AppVersion\s+"[^"]*"', "#define AppVersion    `"$env:BUILD_VERSION`""
+          Set-Content $issPath $iss -NoNewline -Encoding utf8
+          Write-Host "Patched installer.iss:"
+          Get-Content $issPath | Select-String "AppVersion"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
