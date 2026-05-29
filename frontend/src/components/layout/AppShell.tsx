@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Outlet, useLocation } from "react-router-dom";
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SidebarNav } from "./SidebarNav";
 import { BottomNav } from "./BottomNav";
 
@@ -25,7 +26,14 @@ export function AppShell() {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25, ease: [0.2, 0.65, 0.3, 1] }}
             >
-              <Outlet />
+              {/* Per-route ErrorBoundary: a crash inside Dashboard / Trades /
+                  any single page renders the boundary's recovery screen,
+                  but the sidebar, the title bar, and the rest of the SPA
+                  keep working. Navigation to another page resets the
+                  boundary because key=location.pathname forces a remount. */}
+              <ErrorBoundary key={location.pathname}>
+                <Outlet />
+              </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </div>

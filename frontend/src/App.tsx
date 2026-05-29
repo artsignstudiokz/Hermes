@@ -32,7 +32,7 @@ interface AuthState {
 export default function App() {
   const [bootState, setBootState] = useState<"splash" | "ready">("splash");
   const [auth, setAuth] = useState<AuthState | null>(null);
-  // Tutorial visibility — read once on boot. We deliberately don't read
+  // Tutorial visibility - read once on boot. We deliberately don't read
   // localStorage on every render; once dismissed, it stays dismissed for
   // this session even before the flag persists.
   const [tutorialOpen, setTutorialOpen] = useState(false);
@@ -47,7 +47,11 @@ export default function App() {
           await new Promise((r) => setTimeout(r, 700));
           if (active) {
             setBootState("ready");
-            if (shouldShowTutorial()) setTutorialOpen(true);
+            try {
+              if (await shouldShowTutorial()) setTutorialOpen(true);
+            } catch {
+              /* never let tutorial check block app boot */
+            }
           }
         }
       } catch {
@@ -108,8 +112,11 @@ export default function App() {
           )}
         </Routes>
       </Suspense>
+        {/* Tutorial MUST live inside ErrorBoundary so a bug in its
+            spotlight measurement / step indexing doesn't take down
+            the whole SPA (that was the white-screen on restart). */}
+        <Tutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
       </ErrorBoundary>
-      <Tutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </div>
   );
 }

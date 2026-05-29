@@ -95,7 +95,7 @@ export function Backtest() {
       {heavyRun && !activeRunId && (
         <div className="rounded-xl border border-hermes-bronze/40 bg-hermes-bronze/10 p-4 text-sm text-hermes-bronze">
           Бэктест на 60+ днях нагружает CPU и память. Прогон может занять 1–3
-          минуты. Не закрывайте окно — Hermes напишет, когда закончит.
+          минуты. Не закрывайте окно - Hermes напишет, когда закончит.
         </div>
       )}
 
@@ -105,7 +105,7 @@ export function Backtest() {
           <div className="flex items-center justify-between">
             <h2 className="display text-xl font-semibold">Запуск #{activeRunId}</h2>
             <span className="text-xs uppercase tracking-wider text-muted-foreground">
-              {progress?.stage ?? detail.data?.status ?? "—"}
+              {progress?.stage ?? detail.data?.status ?? "-"}
             </span>
           </div>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-hermes-parchment/60">
@@ -174,7 +174,7 @@ export function Backtest() {
                   <td className="px-3 py-2 text-right number">{fmtPct(m.total_return)}</td>
                   <td className="px-3 py-2 text-right number">{fmtPct(m.max_drawdown)}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {r.started_at ? formatDateTime(r.started_at) : "—"}
+                    {r.started_at ? formatDateTime(r.started_at) : "-"}
                   </td>
                 </tr>
               );
@@ -224,12 +224,12 @@ function StatusPill({ status }: { status: string }) {
 
 function fmtNum(v: unknown, decimals: number): string {
   const n = typeof v === "number" ? v : v != null ? Number(v) : NaN;
-  return Number.isFinite(n) ? n.toFixed(decimals) : "—";
+  return Number.isFinite(n) ? n.toFixed(decimals) : "-";
 }
 
 function fmtPct(v: unknown): string {
   const n = typeof v === "number" ? v : v != null ? Number(v) : NaN;
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   // Heuristic: values > 5 are already in % units; <= 5 are fractions.
   return Math.abs(n) > 5 ? `${n.toFixed(1)}%` : `${(n * 100).toFixed(2)}%`;
 }

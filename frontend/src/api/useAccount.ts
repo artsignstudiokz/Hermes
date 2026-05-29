@@ -10,7 +10,7 @@ export function useAccount() {
   const q = useQuery({
     queryKey: ["account"],
     queryFn: () => api.get<AccountInfo | null>("/api/account/info"),
-    // 60 s safety net — equity/balance/margin are patched on every
+    // 60 s safety net - equity/balance/margin are patched on every
     // /ws/equity tick (see subscription below). Was 30 s before
     // v1.0.27; doubled since the WS now drives the live values.
     refetchInterval: 60_000,
@@ -44,7 +44,7 @@ export function useEquityHistory(brokerAccountId: number | null, days = 30) {
     enabled: brokerAccountId != null,
   });
 
-  // Live append on every /ws/equity tick — keeps the sparkline + chart
+  // Live append on every /ws/equity tick - keeps the sparkline + chart
   // history growing in real time without a refetch. We drop the leading
   // point only when we'd exceed `days × 24` bars so the array doesn't
   // grow unbounded over a long session.
@@ -80,7 +80,7 @@ export function useTradingStatus() {
   const q = useQuery({
     queryKey: ["trading-status"],
     queryFn: () => api.get<TradingStatus>("/api/trading/status"),
-    // 30 s fallback instead of 5 s — the WS subscription below pushes
+    // 30 s fallback instead of 5 s - the WS subscription below pushes
     // mode/pause/trade-count/risk changes the moment they happen, so
     // we don't need to hammer REST. Polling stays as a safety net for
     // missed events (transient WS drops within the linger window).

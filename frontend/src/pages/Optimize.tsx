@@ -141,7 +141,7 @@ export function Optimize() {
               <div className="flex items-baseline justify-between text-xs">
                 <span className="uppercase tracking-wider text-muted-foreground">Лучший Sharpe</span>
                 <span className="number text-lg font-semibold gold-text">
-                  {currentBest !== null ? currentBest.toFixed(2) : "—"}
+                  {currentBest !== null ? currentBest.toFixed(2) : "-"}
                 </span>
               </div>
             </div>
@@ -185,16 +185,16 @@ export function Optimize() {
                         {t.value.toFixed(2)}
                       </td>
                       <td className="px-3 py-2 text-right number">
-                        {t.params.base_grid_distance_pips?.toFixed(1) ?? "—"}
+                        {t.params.base_grid_distance_pips?.toFixed(1) ?? "-"}
                       </td>
                       <td className="px-3 py-2 text-right number">
-                        {t.params.lot_multiplier?.toFixed(2) ?? "—"}
+                        {t.params.lot_multiplier?.toFixed(2) ?? "-"}
                       </td>
                       <td className="px-3 py-2 text-right number">
-                        {t.params.max_grid_levels ?? "—"}
+                        {t.params.max_grid_levels ?? "-"}
                       </td>
                       <td className="px-3 py-2 text-right number">
-                        {t.params.fix_take_profit_pct?.toFixed(1) ?? "—"}
+                        {t.params.fix_take_profit_pct?.toFixed(1) ?? "-"}
                       </td>
                     </tr>
                   ))}

@@ -1,4 +1,4 @@
-"""AutoCalibrator — weekly parameter recalibration with champion-challenger.
+"""AutoCalibrator - weekly parameter recalibration with champion-challenger.
 
 Pipeline:
   1. Pull 90 days of OHLCV per enabled pair (via the active BrokerAdapter).
@@ -50,7 +50,7 @@ class CalibrationOutcome:
 
 
 def _suggest_params(trial: Any, baseline: dict) -> dict:
-    """Optuna search space — tuned around the active config rather than zero."""
+    """Optuna search space - tuned around the active config rather than zero."""
     return {
         **baseline,
         "base_grid_distance_pips": trial.suggest_float(
@@ -98,7 +98,7 @@ async def run_calibration(
     initial_equity: float = 10_000.0,
     progress: "callable[[dict], None] | None" = None,
 ) -> CalibrationOutcome:
-    """Top-level entry — fetches data, runs Optuna, applies champion-challenger."""
+    """Top-level entry - fetches data, runs Optuna, applies champion-challenger."""
     if progress:
         progress({"stage": "fetch_data", "pct": 0.0})
     data = await fetch_data(adapter, symbols)

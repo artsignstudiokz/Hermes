@@ -22,7 +22,7 @@ export function KillSwitch() {
         success: (v) => `Закрыто позиций: ${v.closed_count}`,
         error: (e) => `Не удалось: ${e instanceof Error ? e.message : String(e)}`,
       });
-      // toast already shown — no inline state needed.
+      // toast already shown - no inline state needed.
       void r;
     } finally {
       setArmed(false);
@@ -49,7 +49,7 @@ export function KillSwitch() {
             : "border border-hermes-wine/40 bg-hermes-wine/10 text-hermes-wine hover:bg-hermes-wine/15"}
           disabled:opacity-50`}
       >
-        {mut.isPending ? "Закрываю…" : armed ? "Подтвердите — закрыть всё" : "Закрыть все позиции"}
+        {mut.isPending ? "Закрываю…" : armed ? "Подтвердите - закрыть всё" : "Закрыть все позиции"}
       </motion.button>
     </div>
   );

@@ -188,7 +188,7 @@ export function Dashboard() {
             <>Подключите <span className="gold-text">брокера</span></>
           )
         }
-        subtitle="«Нет дома богаче того, в котором живёт Гермес — посланник прибыли.»"
+        subtitle="«Нет дома богаче того, в котором живёт Гермес - посланник прибыли.»"
         status={
           <div className="flex items-center gap-2">
             <BotStatusBadge />
@@ -230,7 +230,7 @@ export function Dashboard() {
                 data-tour="analyze-btn"
                 onClick={() => onAnalyze(true)}
                 disabled={analyze.isPending}
-                title="Только анализ всех пар без сделки — посмотреть что бот думает."
+                title="Только анализ всех пар без сделки - посмотреть что бот думает."
                 className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold/40 bg-hermes-alabaster px-4 py-3 text-xs font-medium hover:bg-hermes-parchment transition disabled:opacity-50"
               >
                 <Brain size={12} className={analyze.isPending ? "animate-pulse" : ""} />
@@ -311,7 +311,7 @@ export function Dashboard() {
         />
       </section>
 
-      {/* Per-mode P&L breakdown — which scenario actually made money */}
+      {/* Per-mode P&L breakdown - which scenario actually made money */}
       <section className="grid gap-4 md:grid-cols-3">
         <ModeStatsCard
           icon={ShieldAlert}
@@ -409,11 +409,11 @@ export function Dashboard() {
         <KillSwitch />
       </section>
 
-      {/* Footer KPI strip — Sharpe, Coins, Bot uptime */}
+      {/* Footer KPI strip - Sharpe, Coins, Bot uptime */}
       <section className="marble-card flex flex-wrap items-center justify-around gap-6 px-6 py-4 text-xs uppercase tracking-[0.18em] text-muted-foreground">
         <span className="flex items-center gap-2">
           <Coins size={13} className="text-hermes-gold-deep" />
-          Стратегия: {config.data?.name ?? "—"}
+          Стратегия: {config.data?.name ?? "-"}
         </span>
         <span className="flex items-center gap-2">
           <ShieldAlert size={13} className="text-hermes-bronze" />
@@ -467,7 +467,7 @@ function ModeStatsCard({
             total === 0 ? "text-muted-foreground" : positive ? "text-hermes-laurel" : "text-hermes-wine"
           }`}
         >
-          {total === 0 ? "—" : formatMoney(pnl)}
+          {total === 0 ? "-" : formatMoney(pnl)}
         </span>
       </div>
       <div className="mt-2 text-[11px] text-muted-foreground">

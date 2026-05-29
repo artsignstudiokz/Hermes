@@ -1,4 +1,4 @@
-"""Market regime detector — classifies each pair into trend / flat / high_vol.
+"""Market regime detector - classifies each pair into trend / flat / high_vol.
 
 Used for two purposes:
   1. Live overlay: when in Auto preset, regime tweaks parameters (flat → tighter
@@ -6,10 +6,10 @@ Used for two purposes:
   2. Status display in the UI (RegimeBadge per pair on Dashboard).
 
 Indicators used:
-  * ADX(14) — trend strength
-  * ATR(14) as a percentage of price — volatility
-  * EMA50 vs EMA200 alignment — trend confirmation
-  * Hurst exponent (optional, scipy-based) — persistence
+  * ADX(14) - trend strength
+  * ATR(14) as a percentage of price - volatility
+  * EMA50 vs EMA200 alignment - trend confirmation
+  * Hurst exponent (optional, scipy-based) - persistence
 
 Global regime is a majority vote across enabled pairs.
 """
@@ -128,7 +128,7 @@ def classify_pair(symbol: str, df: pd.DataFrame) -> PairRegime:
         regime = "flat"
         confidence = min(1.0, (25 - adx) / 25)
     else:
-        # Borderline — fall back to EMA.
+        # Borderline - fall back to EMA.
         regime = "trend" if ema_ok else "flat"
         confidence = 0.45
 

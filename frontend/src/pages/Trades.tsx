@@ -74,7 +74,7 @@ export function Trades() {
             href={`/api/trades/export.csv?year=${new Date().getFullYear()}`}
             download
             className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold-deep/50 bg-hermes-gold/10 px-4 py-2.5 text-sm font-semibold hover:bg-hermes-gold/20"
-            title="Налоговый отчёт за текущий год — все закрытые сделки с net P&L"
+            title="Налоговый отчёт за текущий год - все закрытые сделки с net P&L"
           >
             <Download size={14} /> Налоговый ({new Date().getFullYear()})
           </a>
@@ -174,7 +174,7 @@ export function Trades() {
                       <td className="px-3 py-2 text-right number">{(t.lots ?? 0).toFixed(2)}</td>
                       <td className="px-3 py-2 text-right number">{(t.entry_price ?? 0).toFixed(5)}</td>
                       <td className="px-3 py-2 text-right number">
-                        {t.exit_price != null ? t.exit_price.toFixed(5) : "—"}
+                        {t.exit_price != null ? t.exit_price.toFixed(5) : "-"}
                       </td>
                       <td
                         className={`px-3 py-2 text-right number ${
@@ -297,14 +297,14 @@ function TradeJournalEntry({
         ) : (
           <div className="mt-2 rounded-xl border border-dashed border-hermes-gold/25 bg-hermes-alabaster/40 p-3 text-xs italic text-muted-foreground">
             {trade.mode === "manual"
-              ? "Ручной вход — оператор открыл напрямую через «Тест-сделка» или «Анализ»."
+              ? "Ручной вход - оператор открыл напрямую через «Тест-сделка» или «Анализ»."
               : "Обоснование сигнала недоступно (сделка из ранней версии бота)."}
           </div>
         )}
 
         {/* Meta line */}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-          <span><strong className="text-foreground">Причина закрытия:</strong> {trade.reason || "—"}</span>
+          <span><strong className="text-foreground">Причина закрытия:</strong> {trade.reason || "-"}</span>
           {trade.closed_at && (
             <span><strong className="text-foreground">Закрыта:</strong> {formatDateTime(trade.closed_at)}</span>
           )}
@@ -364,7 +364,7 @@ function TradeJournalEntry({
           </div>
         ) : (
           <div className="mt-2 rounded-xl border border-dashed border-hermes-gold/25 bg-hermes-alabaster/40 p-3 text-xs italic text-muted-foreground">
-            Заметок нет. Запишите свои наблюдения по этой сделке — они помогут оптимизировать
+            Заметок нет. Запишите свои наблюдения по этой сделке - они помогут оптимизировать
             стратегию.
           </div>
         )}

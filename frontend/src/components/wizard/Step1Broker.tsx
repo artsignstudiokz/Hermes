@@ -104,7 +104,7 @@ export function Step1Broker({ onPrev, onNext }: Props) {
                 value={server}
                 onChange={(e) => setServer(e.target.value)}
                 list="onboarding-mt5-servers"
-                placeholder="Начните вводить — найду сами"
+                placeholder="Начните вводить - найду сами"
                 className="form-input"
               />
               <datalist id="onboarding-mt5-servers">

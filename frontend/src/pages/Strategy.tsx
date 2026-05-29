@@ -216,11 +216,11 @@ export function Strategy() {
           />
         </div>
 
-        {/* Ensemble strategy selector — drives the autonomous mode */}
+        {/* Ensemble strategy selector - drives the autonomous mode */}
         <div className="mt-8">
           <h3 className="display text-base font-semibold">Стратегии анализа</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Какие стратегии запускает автономный режим. По умолчанию — Trend + Momentum,
+            Какие стратегии запускает автономный режим. По умолчанию - Trend + Momentum,
             единственная пара с положительным ожиданием в backtest.
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">

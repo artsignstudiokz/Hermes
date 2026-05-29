@@ -20,8 +20,12 @@ export function Settings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleReplayTour = () => {
-    resetTutorial();
+  const handleReplayTour = async () => {
+    try {
+      await resetTutorial();
+    } catch {
+      /* even if backend write fails, still show the tour locally */
+    }
     setTourOpen(true);
   };
 
@@ -45,7 +49,7 @@ export function Settings() {
       <section className="marble-card p-6">
         <h2 className="display text-xl font-semibold">Тема оформления</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          По умолчанию — мраморная (светлая). Тёмная подойдёт для ночной торговли.
+          По умолчанию - мраморная (светлая). Тёмная подойдёт для ночной торговли.
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <ThemeOption
@@ -62,7 +66,7 @@ export function Settings() {
             value="dark"
             current={theme}
             onSelect={setTheme}
-            hint="Тёмная — для ночи"
+            hint="Тёмная - для ночи"
           />
           <ThemeOption
             icon={Sun}
@@ -81,7 +85,7 @@ export function Settings() {
           <div>
             <h2 className="display text-xl font-semibold">Знакомство с Гермесом</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Пройди вводный тур заново — Гермес расскажет как устроены два режима,
+              Пройди вводный тур заново - Гермес расскажет как устроены два режима,
               анализ и безопасность.
             </p>
           </div>
@@ -95,14 +99,14 @@ export function Settings() {
         </div>
       </section>
 
-      {/* Support — download logs */}
+      {/* Support - download logs */}
       <section className="marble-card p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="display text-xl font-semibold">Поддержка</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Если что-то работает не так — скачай архив с логами и пришли его в поддержку.
-              В архиве — `hermes.log` и информация об ОС. Vault и пароли не включаются.
+              Если что-то работает не так - скачай архив с логами и пришли его в поддержку.
+              В архиве - `hermes.log` и информация об ОС. Vault и пароли не включаются.
             </p>
           </div>
           <a
@@ -130,8 +134,8 @@ export function Settings() {
           </button>
         </div>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-          <Row label="Текущая версия" value={version.data?.version ?? u?.current_version ?? "—"} />
-          <Row label="Доступная версия" value={u?.latest_version ?? "—"} />
+          <Row label="Текущая версия" value={version.data?.version ?? u?.current_version ?? "-"} />
+          <Row label="Доступная версия" value={u?.latest_version ?? "-"} />
         </div>
         {u && u.has_update && (
           <div className="mt-5 rounded-xl border border-hermes-gold-deep/40 bg-hermes-gold/10 p-4">

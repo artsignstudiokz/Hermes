@@ -28,7 +28,7 @@ async def _autoconnect_active_broker(
     """After unlock, eagerly bring up the previously-active broker so the
     dashboard renders with real balance instead of an empty account card.
 
-    Best-effort — if connect fails (offline, MT5 closed, etc.) the user
+    Best-effort - if connect fails (offline, MT5 closed, etc.) the user
     will see the broker as inactive and can re-activate manually.
     """
     from app.db.models import BrokerAccount

@@ -1,4 +1,4 @@
-"""OptimizeService — Optuna runs with live trial-by-trial WS broadcast."""
+"""OptimizeService - Optuna runs with live trial-by-trial WS broadcast."""
 
 from __future__ import annotations
 

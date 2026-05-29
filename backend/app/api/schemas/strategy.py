@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class StrategyParams(BaseModel):
-    """Mirror of legacy GridConfig — UI-editable parameters.
+    """Mirror of legacy GridConfig - UI-editable parameters.
 
     Any field omitted from the request will fall back to its default in
     legacy.config.GridConfig when the runner is constructed.
@@ -55,7 +55,7 @@ class StrategyParams(BaseModel):
     ])
     timeframe: str = Field(default="1h")
 
-    # v1.0.22+ — indicator-ensemble selector for autonomous mode.
+    # v1.0.22+ - indicator-ensemble selector for autonomous mode.
     # Empty list / None falls back to ["trend", "momentum"] (the only
     # combo validated profitable on the synthetic backtest). The voting
     # mode controls how the ensemble combines per-strategy signals.

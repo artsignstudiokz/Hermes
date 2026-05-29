@@ -1,4 +1,4 @@
-"""BrokerAdapter — abstract base every broker integration must implement."""
+"""BrokerAdapter - abstract base every broker integration must implement."""
 
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ class BrokerAdapter(ABC):
             for s in symbols:
                 try:
                     yield await self.get_current_price(s)
-                except Exception:  # noqa: BLE001 — broker errors logged by caller
+                except Exception:  # noqa: BLE001 - broker errors logged by caller
                     continue
             await asyncio.sleep(0.5)
 
@@ -95,7 +95,7 @@ class BrokerAdapter(ABC):
 
     # ── Health ───────────────────────────────────────────────────────────────
     async def ping(self) -> bool:
-        """Cheap health check — adapters can override with broker-specific call."""
+        """Cheap health check - adapters can override with broker-specific call."""
         try:
             await self.get_account()
             return True

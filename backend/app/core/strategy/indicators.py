@@ -1,4 +1,4 @@
-"""Indicator panel — computes every technical indicator the bot uses
+"""Indicator panel - computes every technical indicator the bot uses
 to make decisions, in one pass per bar.
 
 The panel is intentionally read-only: strategies and signal generators
@@ -19,7 +19,7 @@ class IndicatorSnapshot:
     """One bar's worth of indicators, pre-computed for the strategy layer."""
     symbol: str
     close: float
-    rsi: float                 # 0..100 — Wilder RSI
+    rsi: float                 # 0..100 - Wilder RSI
     macd: float                # MACD line (12/26 EMA difference)
     macd_signal: float         # 9-EMA of MACD line
     macd_hist: float           # MACD - signal
@@ -30,14 +30,14 @@ class IndicatorSnapshot:
     atr_pct: float             # ATR / close, scale-free
     ema_fast: float
     ema_slow: float
-    adx: float                 # 0..100 — trend strength
+    adx: float                 # 0..100 - trend strength
     plus_di: float
     minus_di: float
     stoch_k: float             # 0..100
     stoch_d: float
     donchian_high: float       # 20-period
     donchian_low: float
-    trend: int = 0             # -1 / 0 / +1 — quick directional consensus
+    trend: int = 0             # -1 / 0 / +1 - quick directional consensus
 
     @property
     def in_bollinger_lower(self) -> bool:

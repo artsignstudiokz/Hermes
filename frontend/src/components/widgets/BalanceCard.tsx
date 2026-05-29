@@ -11,7 +11,7 @@ interface Props {
   history?: EquityPoint[];
 }
 
-/** Premium hero card — equity, profit, mini sparkline, breakdown. */
+/** Premium hero card - equity, profit, mini sparkline, breakdown. */
 export function BalanceCard({ account, loading, history }: Props) {
   const profit = account?.profit ?? 0;
   const equity = account?.equity ?? 0;
@@ -43,7 +43,7 @@ export function BalanceCard({ account, loading, history }: Props) {
               Equity
             </span>
             <span className="rounded-full border border-hermes-gold/30 bg-hermes-alabaster/70 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-hermes-gold-deep">
-              {account?.currency ?? "—"} · 1:{account?.leverage ?? "—"}
+              {account?.currency ?? "-"} · 1:{account?.leverage ?? "-"}
             </span>
           </div>
           <div className="mt-3 number text-4xl md:text-5xl font-semibold tracking-tight text-hermes-navy">

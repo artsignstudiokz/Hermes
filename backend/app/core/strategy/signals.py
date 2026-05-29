@@ -28,7 +28,7 @@ class Signal:
     symbol: str
     direction: Direction
     confidence: float          # 0..1
-    reason: str                # markdown — shown in the UI
+    reason: str                # markdown - shown in the UI
     indicators: dict[str, float]  # the values that drove the decision
 
     def to_dict(self) -> dict:
@@ -85,7 +85,7 @@ class MeanReversionStrategy:
 
     Plain "fade the touch" lost catastrophically in the v1.0.21 backtest
     (Sharpe −13). The issue: in synthetic / real noisy data the touch
-    keeps extending — you're catching falling knives. v1.0.22 adds a
+    keeps extending - you're catching falling knives. v1.0.22 adds a
     stochastic-turn confirmation: only enter long when %K crosses above
     %D (early exit-from-oversold signal), and mirror for short. This
     cuts trade count drastically but improves expectancy.
@@ -112,7 +112,7 @@ class MeanReversionStrategy:
                 confidence=min(1.0, (self.rsi_oversold - s.rsi + 10) / 30.0),
                 reason=(
                     f"BB-нижняя {s.bb_lower:.4f} коснулась, RSI {s.rsi:.1f} перепродан, "
-                    f"Stochastic %K {s.stoch_k:.1f} развернулся вверх над %D {s.stoch_d:.1f} — "
+                    f"Stochastic %K {s.stoch_k:.1f} развернулся вверх над %D {s.stoch_d:.1f} - "
                     f"условия для возврата к среднему."
                 ),
                 indicators={"close": s.close, "bb_lower": s.bb_lower,
@@ -125,7 +125,7 @@ class MeanReversionStrategy:
                 confidence=min(1.0, (s.rsi - self.rsi_overbought + 10) / 30.0),
                 reason=(
                     f"BB-верхняя {s.bb_upper:.4f} коснулась, RSI {s.rsi:.1f} перекуплен, "
-                    f"Stochastic %K {s.stoch_k:.1f} развернулся вниз под %D {s.stoch_d:.1f} — "
+                    f"Stochastic %K {s.stoch_k:.1f} развернулся вниз под %D {s.stoch_d:.1f} - "
                     f"условия для возврата к среднему."
                 ),
                 indicators={"close": s.close, "bb_upper": s.bb_upper,
@@ -139,7 +139,7 @@ class BreakoutStrategy:
     """Donchian channel breakout confirmed by volatility expansion.
 
     A pure `close >= donchian_high` test almost never fires because
-    the high INCLUDES the current bar — so the breakout only counts
+    the high INCLUDES the current bar - so the breakout only counts
     when the current candle prints the new high. Backtest of v1.0.21
     showed exactly 0 trades on 8640 bars. v1.0.22 relaxes:
       • require close to clear the channel by `min_margin` (0.05% of price)
@@ -162,7 +162,7 @@ class BreakoutStrategy:
                 confidence=min(1.0, s.atr_pct * 80),
                 reason=(
                     f"Цена {s.close:.4f} пробила Donchian-хай {s.donchian_high:.4f}; "
-                    f"ATR {s.atr_pct * 100:.2f}% выше порога — пробой подтверждён."
+                    f"ATR {s.atr_pct * 100:.2f}% выше порога - пробой подтверждён."
                 ),
                 indicators={"close": s.close, "donchian_high": s.donchian_high,
                             "atr": s.atr, "atr_pct": s.atr_pct},
@@ -173,7 +173,7 @@ class BreakoutStrategy:
                 confidence=min(1.0, s.atr_pct * 80),
                 reason=(
                     f"Цена {s.close:.4f} пробила Donchian-лоу {s.donchian_low:.4f}; "
-                    f"ATR {s.atr_pct * 100:.2f}% выше порога — пробой подтверждён."
+                    f"ATR {s.atr_pct * 100:.2f}% выше порога - пробой подтверждён."
                 ),
                 indicators={"close": s.close, "donchian_low": s.donchian_low,
                             "atr": s.atr, "atr_pct": s.atr_pct},
@@ -321,7 +321,7 @@ class StrategyEnsemble:
         direction: Direction = chosen[0].direction
         reasons = "\n".join(f"• **{s.strategy}**: {s.reason}" for s in chosen)
         head = (
-            f"**{direction.upper()}** по {snap.symbol} — "
+            f"**{direction.upper()}** по {snap.symbol} - "
             f"{len(chosen)} из {total} стратегий согласны (уверенность {avg_conf:.2f})."
         )
         return SignalReport(
@@ -368,7 +368,7 @@ DEFAULT_STRATEGIES = {
 
 
 def build_ensemble(names: list[str], mode: str = "majority") -> StrategyEnsemble:
-    """Factory used by the runner — accepts a list of preset names.
+    """Factory used by the runner - accepts a list of preset names.
 
     Default of [trend, momentum] is the only pair we've actually validated
     profitable on synthetic walk-forward (Sharpe > 1 vs MeanReversion's

@@ -34,7 +34,7 @@ export function TitleBar() {
         onClick={openPalette}
         className="titlebar-nodrag absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-2 rounded-md border border-hermes-gold/25 bg-hermes-alabaster/70 px-2.5 py-1 text-[11px] text-hermes-navy/55 transition hover:border-hermes-gold/45 hover:text-hermes-navy"
         aria-label="Открыть командную палитру"
-        title="⌘K — командная палитра"
+        title="⌘K - командная палитра"
       >
         <Search size={11} />
         <span>Куда идём?</span>

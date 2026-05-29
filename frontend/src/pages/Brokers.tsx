@@ -36,7 +36,7 @@ export function Brokers() {
         {brokers.data?.length === 0 && !showForm && (
           <div className="marble-card grid place-items-center px-6 py-16 text-center">
             <p className="font-serif italic text-lg text-muted-foreground">
-              «Чтобы Hermes начал торговать — представьтесь брокеру.»
+              «Чтобы Hermes начал торговать - представьтесь брокеру.»
             </p>
             <button
               onClick={() => setShowForm(true)}
@@ -69,7 +69,7 @@ export function Brokers() {
                 )}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                {b.server ? `${b.server}` : "—"}
+                {b.server ? `${b.server}` : "-"}
                 {b.login ? ` · ${b.login}` : ""}
               </div>
             </div>

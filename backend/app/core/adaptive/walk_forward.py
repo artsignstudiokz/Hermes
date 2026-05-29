@@ -56,7 +56,7 @@ def split_data(
     for sym, df in data.items():
         cut = int(len(df) * train_ratio)
         if cut < 100 or len(df) - cut < 50:
-            logger.warning("Skipping %s — not enough bars for split", sym)
+            logger.warning("Skipping %s - not enough bars for split", sym)
             continue
         train[sym] = df.iloc[:cut]
         test[sym] = df.iloc[cut:]

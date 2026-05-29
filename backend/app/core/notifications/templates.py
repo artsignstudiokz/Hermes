@@ -78,7 +78,7 @@ def _ru(event: dict) -> dict[str, str]:
     if t == "broker_down":
         return {
             "title": "Hermes · Брокер недоступен",
-            "body": "Бот приостановлен — проверьте MT5 терминал",
+            "body": "Бот приостановлен - проверьте MT5 терминал",
             "body_long": (
                 f"⚠️ <b>Hermes</b> приостановлен: брокер не отвечает.\n"
                 f"<code>{event.get('reason','')}</code>\n\n"

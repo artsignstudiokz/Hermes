@@ -10,10 +10,10 @@ import { cn } from "@/lib/utils";
  * ⌘K / Ctrl+K command palette. Mount once at app root.
  *
  * Keyboard:
- *   ⌘K / Ctrl+K — open
- *   ↑ ↓        — navigate
- *   Enter      — execute
- *   Esc        — close
+ *   ⌘K / Ctrl+K - open
+ *   ↑ ↓        - navigate
+ *   Enter      - execute
+ *   Esc        - close
  */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);

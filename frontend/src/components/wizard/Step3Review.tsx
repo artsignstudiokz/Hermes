@@ -17,7 +17,7 @@ export function Step3Review({ onPrev, onDone }: Props) {
   const activate = useActivateBroker();
 
   const broker = brokers.data?.[0];
-  // We only activate the broker here — we do NOT auto-start trading.
+  // We only activate the broker here - we do NOT auto-start trading.
   // User makes the explicit decision to begin live trading from the
   // Dashboard "Запустить" button after they've reviewed the state.
   const launch = async () => {
@@ -27,7 +27,7 @@ export function Step3Review({ onPrev, onDone }: Props) {
     }
     try {
       if (!broker.is_active) await activate.mutateAsync(broker.id);
-      toast.success("Готов к запуску", "Откроется панель — нажмите «Запустить», когда будете готовы.");
+      toast.success("Готов к запуску", "Откроется панель - нажмите «Запустить», когда будете готовы.");
       onDone();
     } catch (err) {
       const detail = err instanceof ApiError
@@ -42,7 +42,7 @@ export function Step3Review({ onPrev, onDone }: Props) {
       <div>
         <h2 className="display text-3xl font-semibold gold-text">Всё готово</h2>
         <p className="mt-2 font-serif italic text-muted-foreground">
-          Брокер подключён, стратегия выбрана. На следующем шаге откроется панель — там
+          Брокер подключён, стратегия выбрана. На следующем шаге откроется панель - там
           вы сами решите, когда дать Гермесу начать торговать.
         </p>
       </div>
@@ -50,12 +50,12 @@ export function Step3Review({ onPrev, onDone }: Props) {
       <div className="space-y-3">
         <ReviewRow
           label="Брокер"
-          value={broker ? `${broker.name} (${broker.type.toUpperCase()})` : "—"}
+          value={broker ? `${broker.name} (${broker.type.toUpperCase()})` : "-"}
           extra={broker?.server ?? broker?.login ?? undefined}
         />
         <ReviewRow
           label="Стратегия"
-          value={config.data?.name ?? "—"}
+          value={config.data?.name ?? "-"}
           extra={
             config.data
               ? `TP ${config.data.payload.fix_take_profit_pct}% · stop ${config.data.payload.stop_drawdown_pct}% · ${config.data.payload.max_grid_levels} уровней`
@@ -64,7 +64,7 @@ export function Step3Review({ onPrev, onDone }: Props) {
         />
         <ReviewRow
           label="Пары"
-          value={(config.data?.payload.symbols ?? []).join(", ") || "—"}
+          value={(config.data?.payload.symbols ?? []).join(", ") || "-"}
         />
       </div>
 

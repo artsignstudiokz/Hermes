@@ -1,4 +1,4 @@
-"""NotificationService — fan-out trade events to Web Push + Telegram + WS.
+"""NotificationService - fan-out trade events to Web Push + Telegram + WS.
 
 WS broadcast already happens inside the trading worker; this service handles
 the off-screen channels (push & Telegram) and is invoked from the same place.

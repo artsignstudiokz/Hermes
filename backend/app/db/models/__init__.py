@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models — re-exported for convenience.
+"""SQLAlchemy ORM models - re-exported for convenience.
 
 Routes and services import from `app.db.models` rather than each
 submodule, so this package must surface every Base subclass that the

@@ -1,4 +1,4 @@
-"""APScheduler bootstrap — weekly auto-calibration + heartbeat broadcast."""
+"""APScheduler bootstrap - weekly auto-calibration + heartbeat broadcast."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ class HermesScheduler:
     async def _weekly_calibrate(self) -> None:
         adapter = self._registry.get_active()
         if adapter is None:
-            logger.info("Skipping auto-calibration — no active broker")
+            logger.info("Skipping auto-calibration - no active broker")
             return
 
         sm = get_sessionmaker()
@@ -66,7 +66,7 @@ class HermesScheduler:
             )).scalar_one_or_none()
 
         if cfg is None or not cfg.payload.get("auto_calibrate"):
-            logger.info("Skipping auto-calibration — not in Auto preset")
+            logger.info("Skipping auto-calibration - not in Auto preset")
             return
 
         symbols = cfg.payload.get("symbols") or [

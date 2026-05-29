@@ -1,5 +1,5 @@
 /**
- * Vitest setup — DOM stubs + matchMedia polyfill (jsdom doesn't ship it).
+ * Vitest setup - DOM stubs + matchMedia polyfill (jsdom doesn't ship it).
  */
 
 import "@testing-library/jest-dom/vitest";
@@ -21,9 +21,9 @@ if (typeof window !== "undefined" && !window.matchMedia) {
   });
 }
 
-// IntersectionObserver polyfill — used by scroll-reveal effects.
+// IntersectionObserver polyfill - used by scroll-reveal effects.
 if (typeof window !== "undefined" && !("IntersectionObserver" in window)) {
-  // @ts-expect-error — minimal stub for tests
+  // @ts-expect-error - minimal stub for tests
   window.IntersectionObserver = class {
     observe() {}
     unobserve() {}

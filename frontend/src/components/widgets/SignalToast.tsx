@@ -86,6 +86,6 @@ function detailFor(t: SignalEvent): string {
   if (t.type === "open") return `${t.direction === "long" ? "Покупка" : "Продажа"} · уровень ${t.level} · ${t.lots} лот @ ${t.price?.toFixed(5)}`;
   if (t.type === "close_basket") return `${t.reason ?? ""} · P&L: ${t.pnl?.toFixed(2)}`;
   if (t.type === "kill_switch") return `Закрыто позиций: ${t.closed_count}`;
-  if (t.type === "error") return t.message ?? "—";
+  if (t.type === "error") return t.message ?? "-";
   return "";
 }

@@ -1,4 +1,4 @@
-"""BacktestService — fire-and-forget backtest runs with WS progress."""
+"""BacktestService - fire-and-forget backtest runs with WS progress."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ class BacktestService:
 
     # Hard limits prevent the legacy engine from blowing the process in
     # frozen builds. 60 days × ~6 pairs × 1h bars ≈ 8.6k bars × strategy
-    # logic — runs in ~30s, fits in memory. Above that the SciPy/NumPy
+    # logic - runs in ~30s, fits in memory. Above that the SciPy/NumPy
     # internals can segfault Python entirely on Windows PyInstaller.
     MAX_DAYS = 60
     MAX_SYMBOLS = 8
@@ -63,7 +63,7 @@ class BacktestService:
         try:
             adapter = self._registry.get_active()
             if adapter is None:
-                raise RuntimeError("No active broker — connect one first")
+                raise RuntimeError("No active broker - connect one first")
 
             await self._broadcast(ws_topic, {"type": "progress", "stage": "fetching", "pct": 5})
             data = {}
@@ -78,7 +78,7 @@ class BacktestService:
                 })
 
             if not data:
-                raise RuntimeError("No data fetched — backtest aborted")
+                raise RuntimeError("No data fetched - backtest aborted")
 
             await self._broadcast(ws_topic, {"type": "progress", "stage": "running", "pct": 50})
             # 5-minute hard timeout: if the legacy engine hangs (or in a
@@ -91,7 +91,7 @@ class BacktestService:
                     timeout=300,
                 )
             except asyncio.TimeoutError as e:
-                raise RuntimeError("Backtest exceeded 5-minute limit — try fewer days or pairs") from e
+                raise RuntimeError("Backtest exceeded 5-minute limit - try fewer days or pairs") from e
             await self._broadcast(ws_topic, {"type": "progress", "stage": "running", "pct": 95})
 
             equity_series = metrics.pop("equity_curve", None)
@@ -123,7 +123,7 @@ class BacktestService:
             self._tasks.pop(run_id, None)
 
     async def _broadcast(self, topic: str, payload: dict) -> None:
-        # Reuse the generic ws manager — clients subscribe to /ws/<topic>.
+        # Reuse the generic ws manager - clients subscribe to /ws/<topic>.
         await self._ws.broadcast(topic, payload)
 
     @staticmethod

@@ -1,4 +1,4 @@
-"""Built-in strategy presets — what users see in the UI before tuning."""
+"""Built-in strategy presets - what users see in the UI before tuning."""
 
 from __future__ import annotations
 

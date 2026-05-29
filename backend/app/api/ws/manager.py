@@ -1,8 +1,8 @@
-"""WebSocketManager — pub/sub broadcast across topic rooms.
+"""WebSocketManager - pub/sub broadcast across topic rooms.
 
 Topics map 1:1 to URLs (positions, equity, signals, logs). Services call
 `broadcast(topic, payload)`; clients subscribe via WS and receive JSON.
-Disconnects are tolerated — broken sockets are skipped, not raised.
+Disconnects are tolerated - broken sockets are skipped, not raised.
 """
 
 from __future__ import annotations

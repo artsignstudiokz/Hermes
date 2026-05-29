@@ -1,4 +1,4 @@
-"""ngrok tunnel — opens a public URL pointing at our local FastAPI port.
+"""ngrok tunnel - opens a public URL pointing at our local FastAPI port.
 
 Auth-tokened by default (env BCT_NGROK_AUTHTOKEN); we degrade gracefully
 to anonymous tunnels when no token is provided (lower bandwidth, ngrok

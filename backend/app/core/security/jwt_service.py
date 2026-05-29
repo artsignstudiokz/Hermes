@@ -1,6 +1,6 @@
 """Tiny JWT helper bound to the running process.
 
-The signing secret is derived once per process from os.urandom — tokens
+The signing secret is derived once per process from os.urandom - tokens
 are invalidated on every restart, which is the right behaviour for a
 locally-running desktop app: closing the window logs you out.
 """

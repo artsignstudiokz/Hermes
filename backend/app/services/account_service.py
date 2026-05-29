@@ -1,4 +1,4 @@
-"""AccountService — facade over BrokerRegistry for routes that need
+"""AccountService - facade over BrokerRegistry for routes that need
 account-level data without touching adapters directly.
 """
 

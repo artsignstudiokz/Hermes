@@ -5,14 +5,14 @@ Approach:
   1. Walk every `terminal64.exe` / `terminal.exe` under common install roots
      and `%APPDATA%\MetaQuotes\Terminal\<HASH>` (cached terminals from
      portable installs and re-installs).
-  2. For each terminal, read `<terminal>\config\accounts.ini` — every
+  2. For each terminal, read `<terminal>\config\accounts.ini` - every
      section is one previously-used account/server combo.
   3. Parse `servers.dat` if accounts.ini is missing: it's a binary blob,
-     but the server names are stored as null-terminated wide strings —
+     but the server names are stored as null-terminated wide strings -
      we extract printable ASCII tokens that look like server identifiers.
 
 Result is broker/server list for the BrokerForm autocomplete; missing
-fields just degrade gracefully — the user can always type a server name
+fields just degrade gracefully - the user can always type a server name
 manually.
 """
 
@@ -43,7 +43,7 @@ class MT5Installation:
     is_portable: bool = False
 
 
-# Heuristic root candidates we probe. Order matters — prefer Program Files.
+# Heuristic root candidates we probe. Order matters - prefer Program Files.
 _TERMINAL_BINARIES = ("terminal64.exe", "terminal.exe")
 
 
@@ -58,7 +58,7 @@ def _candidate_roots() -> list[Path]:
     appdata = os.environ.get("APPDATA")
     if appdata:
         roots.append(Path(appdata) / "MetaQuotes" / "Terminal")
-    # User's home — covers sideloaded installations.
+    # User's home - covers sideloaded installations.
     roots.append(Path.home())
     # Drives root (depth-limited scan kicks in at the next layer).
     return roots
@@ -160,7 +160,7 @@ def list_servers() -> list[MT5Server]:
         if not config_dir.exists():
             continue
 
-        # 1. accounts.ini — easy structured source.
+        # 1. accounts.ini - easy structured source.
         accounts_ini = config_dir / "accounts.ini"
         if accounts_ini.exists():
             for srv in _parse_accounts_ini(accounts_ini):
@@ -169,7 +169,7 @@ def list_servers() -> list[MT5Server]:
                         name=srv.name, broker=srv.broker, terminal_path=inst.path,
                     )
 
-        # 2. servers.dat — binary, fish out plausible server identifiers.
+        # 2. servers.dat - binary, fish out plausible server identifiers.
         servers_dat = config_dir / "servers.dat"
         if servers_dat.exists():
             for name in _scrape_servers_dat(servers_dat):
@@ -204,7 +204,7 @@ def _parse_accounts_ini(path: Path) -> list[MT5Server]:
 
 
 def _scrape_servers_dat(path: Path) -> list[str]:
-    """Heuristic — server names look like 'BrokerName-Real|Demo|MT5...'."""
+    """Heuristic - server names look like 'BrokerName-Real|Demo|MT5...'."""
     try:
         blob = path.read_bytes()
     except Exception:

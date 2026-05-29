@@ -1,4 +1,4 @@
-"""TunnelService — single ngrok tunnel + PIN-protected access for remote devices."""
+"""TunnelService - single ngrok tunnel + PIN-protected access for remote devices."""
 
 from __future__ import annotations
 

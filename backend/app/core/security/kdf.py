@@ -15,7 +15,7 @@ KEY_LEN = 32  # Fernet expects 32 bytes after base64 encoding
 SALT_LEN = 16
 
 # Conservative defaults for an interactive desktop app on a laptop:
-#   memory ~= 64 MB, 3 passes, 4 lanes — ~250 ms on a recent CPU.
+#   memory ~= 64 MB, 3 passes, 4 lanes - ~250 ms on a recent CPU.
 TIME_COST = 3
 MEMORY_COST = 65_536  # KiB
 PARALLELISM = 4

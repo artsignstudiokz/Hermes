@@ -1,7 +1,7 @@
 """Pre-flight validation for strategy parameters.
 
 Goal: prevent users from saving a config that will blow up their account
-on the first signal. Returns a list of `Issue`s — the UI shows them next
+on the first signal. Returns a list of `Issue`s - the UI shows them next
 to the offending field.
 """
 
@@ -72,14 +72,14 @@ def validate_strategy(params: dict, equity: float) -> list[Issue]:
         issues.append(Issue(
             field="lot_multiplier",
             severity="error",
-            message="Множитель лота меньше 1.0 уменьшит экспозицию на каждом следующем уровне — это не сетка.",
+            message="Множитель лота меньше 1.0 уменьшит экспозицию на каждом следующем уровне - это не сетка.",
         ))
 
     if risk_per_trade_pct > 5:
         issues.append(Issue(
             field="risk_per_trade_pct",
             severity="warning",
-            message="Риск на сделку >5% от депозита — крайне агрессивно.",
+            message="Риск на сделку >5% от депозита - крайне агрессивно.",
         ))
 
     if ema_fast >= ema_slow:

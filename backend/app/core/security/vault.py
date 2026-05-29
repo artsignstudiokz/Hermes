@@ -1,4 +1,4 @@
-"""CredentialVault — encrypted storage for broker creds and API keys.
+"""CredentialVault - encrypted storage for broker creds and API keys.
 
 File layout (`credentials.enc`):
     {
@@ -43,7 +43,7 @@ class VaultLocked(VaultError):
 class CredentialVault:
     """Stateful vault: locked at construction, unlocked via master password.
 
-    NOT thread-safe — guard with a lock if accessed from multiple threads.
+    NOT thread-safe - guard with a lock if accessed from multiple threads.
     The decrypted payload lives in memory between unlock() and lock().
     """
 
@@ -84,7 +84,7 @@ class CredentialVault:
         if self.lockout_until is not None:
             raise VaultLocked(f"Locked until {self._lockout_until.isoformat()}")
         if not self.exists():
-            raise VaultError("Vault does not exist — call create() first")
+            raise VaultError("Vault does not exist - call create() first")
 
         raw = json.loads(self._path.read_text(encoding="utf-8"))
         salt = base64.b64decode(raw["salt"])
@@ -109,7 +109,7 @@ class CredentialVault:
         logger.info("Vault unlocked (%d secrets loaded)", len(self._payload))
 
     def lock(self) -> None:
-        # Best-effort key zeroing — Python doesn't guarantee, but we drop the ref.
+        # Best-effort key zeroing - Python doesn't guarantee, but we drop the ref.
         self._key = None
         self._payload = {}
         logger.info("Vault locked")
@@ -135,7 +135,7 @@ class CredentialVault:
     def set(self, key: str, value: Any) -> None:
         self._require_unlocked()
         self._payload[key] = value
-        # Re-encrypt with the existing salt — read salt from file.
+        # Re-encrypt with the existing salt - read salt from file.
         raw = json.loads(self._path.read_text(encoding="utf-8"))
         salt = base64.b64decode(raw["salt"])
         self._write(salt)

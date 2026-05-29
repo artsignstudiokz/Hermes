@@ -1,4 +1,4 @@
-"""Broker-agnostic data classes — the contract between adapters and strategy.
+"""Broker-agnostic data classes - the contract between adapters and strategy.
 
 All units are normalized so the strategy never has to ask "is this a Forex
 pip or a crypto tick?". Conversions live inside each adapter.
@@ -95,7 +95,7 @@ class OrderRequest:
     deviation_points: int = 20
     # Protective levels sent directly to the broker on open. When the
     # bot is killed (process exit, OS reboot, etc.) the broker still
-    # has the SL/TP and will close the position autonomously — this is
+    # has the SL/TP and will close the position autonomously - this is
     # the difference between "bot dies and position drifts forever"
     # and "bot dies and position closes at the planned stop". Values
     # are absolute price levels, not pips. None = no broker-side level.
@@ -137,7 +137,7 @@ class Position:
 
 @dataclass(slots=True)
 class Trade:
-    """Closed trade — what hits the trade history table."""
+    """Closed trade - what hits the trade history table."""
 
     ticket: str
     symbol: str
@@ -155,7 +155,7 @@ class Trade:
 
 @dataclass(slots=True)
 class BrokerCredentials:
-    """Free-form bag of secrets — adapter-specific shape, validated inside."""
+    """Free-form bag of secrets - adapter-specific shape, validated inside."""
 
     type: BrokerType
     server: str | None = None

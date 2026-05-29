@@ -10,7 +10,7 @@ export function usePositions() {
   const q = useQuery({
     queryKey: ["positions"],
     queryFn: () => api.get<Position[]>("/api/positions"),
-    // 60 s safety net — the WS subscription below pushes the full
+    // 60 s safety net - the WS subscription below pushes the full
     // positions array on every worker tick, so polling is just for
     // recovery after a transient WS drop. Was 15 s before v1.0.27.
     refetchInterval: 60_000,

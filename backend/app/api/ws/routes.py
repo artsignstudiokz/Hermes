@@ -1,4 +1,4 @@
-"""WebSocket routes — clients connect to /ws/<topic> and receive JSON broadcasts."""
+"""WebSocket routes - clients connect to /ws/<topic> and receive JSON broadcasts."""
 
 from __future__ import annotations
 

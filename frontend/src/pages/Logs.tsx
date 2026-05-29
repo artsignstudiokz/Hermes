@@ -20,7 +20,7 @@ export function Logs() {
         const r = await api.get<LogsResponse>("/api/system/logs?tail=400");
         if (active) setLines(r.lines);
       } catch {
-        // ignore — backend may be reloading in dev
+        // ignore - backend may be reloading in dev
       }
     };
     tick();

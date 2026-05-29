@@ -1,5 +1,5 @@
 /**
- * Minimal typed fetch wrapper. Auth token (JWT) is stored in memory only —
+ * Minimal typed fetch wrapper. Auth token (JWT) is stored in memory only -
  * the desktop window restart effectively logs the user out, which is what
  * we want for a local trading app.
  */

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hermes Trading Bot · BAI Core · Презентация</title>
-  <meta name="description" content="Hermes — десктопный торговый бот от BAI Core. Полная презентация функционала, архитектуры, безопасности и дорожной карты." />
+  <meta name="description" content="Hermes - десктопный торговый бот от BAI Core. Полная презентация функционала, архитектуры, безопасности и дорожной карты." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -405,7 +405,7 @@
       <p class="lead">
         Полностью автономный торговый ассистент для MetaTrader 5 и криптобирж.
         Объясняет каждое решение, защищает от слива, обновляется без переустановки.
-        Работает локально — данные никогда не покидают компьютер оператора.
+        Работает локально - данные никогда не покидают компьютер оператора.
       </p>
 
       <div class="hero-stats">
@@ -425,11 +425,11 @@
   <section>
     <div class="container">
       <span class="eyebrow">Что такое Hermes</span>
-      <h2 class="display" style="margin-top:0.75rem">Не торговый сигнал-сервис.<br /><span class="gold-text">Самостоятельный исполнитель.</span></h2>
+      <h2 class="display" style="margin-top:0.75rem">Самостоятельный <span class="gold-text">исполнитель</span> сделок</h2>
       <p class="lead" style="margin-top:1.5rem; max-width:820px">
-        Hermes — это десктопное приложение под Windows. Устанавливается двойным кликом,
+        Hermes - это десктопное приложение под Windows. Устанавливается двойным кликом,
         запускается из меню Пуск, работает в фоне. Подключается к торговому счёту оператора
-        (MetaTrader 5, в работе — Binance/Bybit/OKX), сам открывает и закрывает сделки,
+        (MetaTrader 5, в работе - Binance/Bybit/OKX), сам открывает и закрывает сделки,
         пишет отчёт о каждом решении.
       </p>
 
@@ -437,12 +437,12 @@
         <div class="card">
           <div class="card-icon">🔐</div>
           <h3>100% локально</h3>
-          <p>Vault с ключами зашифрован Argon2id + Fernet. БД, логи, история — всё в <span class="mono" style="font-size:0.85em">%APPDATA%\BAI Core\Hermes\</span>. Никаких облаков, никакой телеметрии без согласия.</p>
+          <p>Vault с ключами зашифрован Argon2id + Fernet. БД, логи, история - всё в <span class="mono" style="font-size:0.85em">%APPDATA%\BAI Core\Hermes\</span>. Никаких облаков, никакой телеметрии без согласия.</p>
         </div>
         <div class="card">
           <div class="card-icon">🧠</div>
           <h3>Объясняет каждое действие</h3>
-          <p>Перед каждой сделкой — markdown-отчёт: какие индикаторы согласились, какая стратегия сработала, уверенность. Это не «чёрный ящик».</p>
+          <p>Перед каждой сделкой формируется markdown-отчёт: какие индикаторы согласились, какая стратегия сработала, уверенность. Никаких «чёрных ящиков».</p>
         </div>
         <div class="card">
           <div class="card-icon">🛡</div>
@@ -471,7 +471,7 @@
           <h3>Одна откалиброванная стратегия</h3>
           <p>Только Trend Following с подтверждением ADX. Работает строго по 3-5 выбранным парам. Открывает только при уверенности ≥ 0.7. Это «торговать только то, что показало себя на истории».</p>
           <ul>
-            <li>Одна стратегия — Trend Following + ADX</li>
+            <li>Одна стратегия - Trend Following + ADX</li>
             <li>3-5 настроенных пар, остальные игнорирует</li>
             <li>Порог уверенности 0.7</li>
             <li>Откалибровано через walk-forward backtest</li>
@@ -481,7 +481,7 @@
         <div class="mode-card autonomous">
           <span class="mode-badge">🧠 Автономный режим</span>
           <h3>Развязанные руки</h3>
-          <p>Все 4 стратегии в ансамбле с голосованием большинством. Сканирует все настроенные пары, выбирает одну с самым сильным сигналом — открывает там. Порог уверенности 0.5.</p>
+          <p>Все 4 стратегии в ансамбле с голосованием большинством. Сканирует все настроенные пары, выбирает одну с самым сильным сигналом - открывает там. Порог уверенности 0.5.</p>
           <ul>
             <li>Trend Following + Momentum + Mean Reversion + Breakout</li>
             <li>Любая пара из настроенных</li>
@@ -493,7 +493,7 @@
 
       <div class="quote">
         Бот никогда не открывает позиции на нескольких парах одновременно.
-        За один тик — максимум одна сделка на лучшем сигнале.
+        За один тик - максимум одна сделка на лучшем сигнале.
       </div>
     </div>
   </section>
@@ -504,8 +504,8 @@
   <section>
     <div class="container">
       <span class="eyebrow">Как принимается решение</span>
-      <h2 class="display" style="margin-top:0.75rem">Каждый тик — <span class="gold-text">пять шагов</span></h2>
-      <p style="margin-top:1rem">Tick запускается каждые 60 секунд. Если что-то в pipeline блокирует — бот пишет почему.</p>
+      <h2 class="display" style="margin-top:0.75rem">Каждый тик - <span class="gold-text">пять шагов</span></h2>
+      <p style="margin-top:1rem">Tick запускается каждые 60 секунд. Если что-то в pipeline блокирует - бот пишет почему.</p>
 
       <div class="pipeline">
         <div class="pipe-step">
@@ -526,7 +526,7 @@
         <div class="pipe-step">
           <div class="pipe-num">4</div>
           <h4>Risk Gate</h4>
-          <p>Daily loss / drawdown / max positions. Если tripped — отказ.</p>
+          <p>Daily loss / drawdown / max positions. Если tripped - отказ.</p>
         </div>
         <div class="pipe-step">
           <div class="pipe-num">5</div>
@@ -606,7 +606,7 @@
       <h2 class="display" style="margin-top:0.75rem">Три независимых <span class="gold-text">circuit breaker'а</span></h2>
       <p style="margin-top:1rem; max-width:720px">
         Каждый guard срабатывает независимо. Tripped state не сбрасывается
-        переключением режима — только полночь UTC или ручной reset.
+        переключением режима - только полночь UTC или ручной reset.
       </p>
 
       <div class="grid grid-3" style="margin-top:3rem">
@@ -631,7 +631,7 @@
         <div class="card">
           <div class="card-icon">🎯</div>
           <h3>Broker-side SL/TP</h3>
-          <p>Каждый ордер открывается со стопом и тейком, отправленными напрямую брокеру. <strong>Бот может упасть — позиция закроется сама</strong>. SL = entry − 2×ATR, TP = entry + 4×ATR (risk/reward 1:2).</p>
+          <p>Каждый ордер открывается со стопом и тейком, отправленными напрямую брокеру. <strong>Бот может упасть - позиция закроется сама</strong>. SL = entry − 2×ATR, TP = entry + 4×ATR (risk/reward 1:2).</p>
         </div>
         <div class="card">
           <div class="card-icon">🩺</div>
@@ -653,7 +653,7 @@
   <section>
     <div class="container">
       <span class="eyebrow">Опыт оператора</span>
-      <h2 class="display" style="margin-top:0.75rem">Премиум-интерфейс. <span class="gold-text">Никакой пустоты.</span></h2>
+      <h2 class="display" style="margin-top:0.75rem">Продуманный <span class="gold-text">интерфейс</span> оператора</h2>
 
       <div class="grid grid-3" style="margin-top:2.5rem">
         <div class="card">
@@ -664,27 +664,27 @@
         <div class="card">
           <div class="card-icon">📡</div>
           <h3>Реал-тайм через WebSocket</h3>
-          <p>Equity-кривая, баланс, позиции, сигналы — всё push-based. REST остался safety-net на 60 секунд. -82% сетевого трафика по сравнению с polling.</p>
+          <p>Equity-кривая, баланс, позиции, сигналы - всё push-based. REST остался safety-net на 60 секунд. -82% сетевого трафика по сравнению с polling.</p>
         </div>
         <div class="card">
           <div class="card-icon">📱</div>
           <h3>Мобильный доступ</h3>
-          <p>QR + PIN → ngrok-туннель → дашборд на телефоне. Не браузерная закладка — PWA с push-уведомлениями, иконкой, splash screen.</p>
+          <p>QR + PIN → ngrok-туннель → дашборд на телефоне. Не браузерная закладка - PWA с push-уведомлениями, иконкой, splash screen.</p>
         </div>
         <div class="card">
           <div class="card-icon">📨</div>
           <h3>Telegram нотификации</h3>
-          <p>Bot token + chat_id один раз. Каждая открытая сделка — markdown-отчёт с обоснованием. Kill switch и broker_down — отдельные алерты.</p>
+          <p>Bot token + chat_id один раз. Каждая открытая сделка - markdown-отчёт с обоснованием. Kill switch и broker_down - отдельные алерты.</p>
         </div>
         <div class="card">
           <div class="card-icon">📊</div>
           <h3>Per-mode P&L</h3>
-          <p>Три карточки на дашборде: Проверенный, Автономный, Ручные. Оператор видит какой режим реально приносит P&L, какой — нет.</p>
+          <p>Три карточки на дашборде: Проверенный, Автономный, Ручные. Оператор видит какой режим реально приносит P&L, какой - нет.</p>
         </div>
         <div class="card">
           <div class="card-icon">📦</div>
           <h3>Tax CSV + Log Bundle</h3>
-          <p>Налоговый отчёт за год одним кликом (формат КГД РК / 1099-B / MiFID). Архив логов для поддержки — без vault, без credentials.</p>
+          <p>Налоговый отчёт за год одним кликом (формат КГД РК / 1099-B / MiFID). Архив логов для поддержки - без vault, без credentials.</p>
         </div>
       </div>
     </div>
@@ -696,7 +696,7 @@
   <section>
     <div class="container">
       <span class="eyebrow">Адаптация к рынку</span>
-      <h2 class="display" style="margin-top:0.75rem">Каждое воскресенье — <span class="gold-text">переподбор параметров</span></h2>
+      <h2 class="display" style="margin-top:0.75rem">Еженедельный <span class="gold-text">переподбор параметров</span></h2>
       <p style="margin-top:1rem; max-width:780px">
         Walk-forward калибровка с Optuna. 90 дней OHLCV, разделение 70/30,
         100 trials. Champion-challenger: новые параметры применяются только если
@@ -713,7 +713,7 @@
             <span class="chip accent">high_vol (ATR% &gt; 80 percentile)</span>
           </div>
           <p style="margin-top:1rem; font-size:0.9rem; color:var(--ink-3)">
-            Глобальный режим — мажоритарное голосование по парам. Используется
+            Глобальный режим - мажоритарное голосование по парам. Используется
             для policy overlay в Auto-режиме.
           </p>
         </div>
@@ -731,7 +731,7 @@
       </div>
 
       <p style="margin-top:2rem">
-        Оператор видит всю историю калибровок на странице <strong>«Адаптация»</strong> — таблица,
+        Оператор видит всю историю калибровок на странице <strong>«Адаптация»</strong> - таблица,
         diff параметров, кнопка <strong>«Запустить сейчас»</strong> и <strong>«Откатить»</strong>.
       </p>
     </div>
@@ -785,7 +785,7 @@
   <section>
     <div class="container">
       <span class="eyebrow">Технологический стек</span>
-      <h2 class="display" style="margin-top:0.75rem">Современный, проверенный, <span class="gold-text">production-ready</span></h2>
+      <h2 class="display" style="margin-top:0.75rem">Современный <span class="gold-text">production-ready</span> стек</h2>
 
       <div class="tech-grid" style="margin-top:2.5rem">
         <div class="tech-item"><div class="label">Backend</div><div class="value">Python 3.11+</div></div>
@@ -814,7 +814,7 @@
   <section>
     <div class="container">
       <span class="eyebrow">Установка и обновления</span>
-      <h2 class="display" style="margin-top:0.75rem"><span class="gold-text">Двойной клик</span> — и в работе</h2>
+      <h2 class="display" style="margin-top:0.75rem">Установка <span class="gold-text">двойным кликом</span></h2>
 
       <div class="grid grid-2" style="margin-top:2.5rem">
         <div class="card">
@@ -822,20 +822,20 @@
           <h3>Первая установка</h3>
           <p>Скачать <span class="mono">Hermes-Setup-1.0.27.exe</span> с GitHub Releases (~80 МБ).
           Двойной клик → русский wizard с лого BAI Core → за 30 секунд готово.
-          Установка per-user в <span class="mono" style="font-size:0.85em">%LOCALAPPDATA%\Programs\Hermes</span> — без UAC.</p>
+          Установка per-user в <span class="mono" style="font-size:0.85em">%LOCALAPPDATA%\Programs\Hermes</span> - без UAC.</p>
         </div>
         <div class="card">
           <div class="card-icon">🔄</div>
           <h3>Обновление без переустановки</h3>
           <p>Inno Setup детектит существующую установку по фиксированному AppId,
           закрывает старый Hermes.exe (<span class="mono">CloseApplications=force</span>),
-          подменяет файлы, перезапускает новую версию. <strong>Vault, БД, стратегии — сохраняются.</strong></p>
+          подменяет файлы, перезапускает новую версию. <strong>Vault, БД, стратегии - сохраняются.</strong></p>
         </div>
       </div>
 
       <p style="margin-top:2rem; max-width:780px">
         Update Service внутри приложения автоматически проверяет GitHub Releases каждый раз
-        при открытии Settings. Если есть новая версия — баннер с release notes + кнопка
+        при открытии Settings. Если есть новая версия - баннер с release notes + кнопка
         «Скачать и установить».
       </p>
     </div>
@@ -847,26 +847,26 @@
   <section>
     <div class="container">
       <span class="eyebrow">Валидация и тестирование</span>
-      <h2 class="display" style="margin-top:0.75rem">Production-ready значит — <span class="gold-text">проверено</span></h2>
+      <h2 class="display" style="margin-top:0.75rem">Многоуровневая <span class="gold-text">валидация</span></h2>
 
       <div class="grid grid-3" style="margin-top:2.5rem">
         <div class="card">
           <h3>76 автоматизированных тестов</h3>
           <p>Unit тесты vault, KDF, JWT, validator, regime detector, signal ensemble.
-          Integration — broker adapters (mocked), risk engine, daily counter.
-          E2E — smoke API на лайв backend через ASGI.</p>
+          Integration - broker adapters (mocked), risk engine, daily counter.
+          E2E - smoke API на лайв backend через ASGI.</p>
         </div>
         <div class="card">
           <h3>Backtest валидация стратегий</h3>
           <p>На каждом коммите запускается mini-backtest по синтетическим данным.
           Default ensemble (Trend + Momentum) обязан показать положительное
-          ожидание — иначе CI красный, релиз заблокирован.</p>
+          ожидание - иначе CI красный, релиз заблокирован.</p>
         </div>
         <div class="card">
           <h3>Walk-forward в продакшене</h3>
           <p>Champion-challenger валидация каждое воскресенье. Параметры
           применяются только при положительной разнице sharpe_oos с защитой
-          от overfitting. Без этого — rollback к предыдущим.</p>
+          от overfitting. Без этого - rollback к предыдущим.</p>
         </div>
       </div>
 
@@ -890,27 +890,27 @@
 
       <div class="timeline">
         <div class="tl-item done">
-          <div class="tl-version">v1.0.0 — v1.0.21</div>
+          <div class="tl-version">v1.0.0 - v1.0.21</div>
           <div class="tl-title">Foundation</div>
           <div class="tl-desc">Установщик, vault, MT5 коннект, onboarding wizard, два режима торговли, indicator engine, ensemble с объяснениями, tutorial.</div>
         </div>
         <div class="tl-item done">
-          <div class="tl-version">v1.0.22 — v1.0.25</div>
+          <div class="tl-version">v1.0.22 - v1.0.25</div>
           <div class="tl-title">Validation & Safety</div>
           <div class="tl-desc">Backtest нашёл что v1.0.21 ensemble терял бы деньги → исправлено. Risk Engine, MT5 watchdog, position-level close, per-mode P&L, broker-side SL/TP, log bundle, close-logic reconciliation, Telegram нотификации, strategy editor UI, Tax CSV.</div>
         </div>
         <div class="tl-item done">
-          <div class="tl-version">v1.0.26 — v1.0.27</div>
+          <div class="tl-version">v1.0.26 - v1.0.27</div>
           <div class="tl-title">Adaptation & Performance</div>
-          <div class="tl-desc">Walk-forward UI (триггер калибровки + champion-challenger diff). WS-driven live updates — −82% HTTP-нагрузки, sparkline дышит в реал-тайм.</div>
+          <div class="tl-desc">Walk-forward UI (триггер калибровки + champion-challenger diff). WS-driven live updates - −82% HTTP-нагрузки, sparkline дышит в реал-тайм.</div>
         </div>
         <div class="tl-item next">
-          <div class="tl-version">v1.1 — следующий релиз</div>
+          <div class="tl-version">v1.1 - следующий релиз</div>
           <div class="tl-title">CCXT testnet · Code signing · macOS</div>
           <div class="tl-desc">CCXT Binance/Bybit/OKX end-to-end на testnet. EV-сертификат для подписи Windows exe (SmartScreen). macOS .pkg билд с notarization. Эти три блокера снимают барьер для широкого запуска.</div>
         </div>
         <div class="tl-item next">
-          <div class="tl-version">v1.2 — после релиза</div>
+          <div class="tl-version">v1.2 - после релиза</div>
           <div class="tl-title">i18n · Trade journal · News feed</div>
           <div class="tl-desc">RU/EN/KZ локализация. Trade journal с заметками per trade. Интеграция новостных лент (Reuters / Bloomberg) с FinBERT sentiment scoring как дополнительный сигнал.</div>
         </div>
@@ -925,8 +925,8 @@
     <div class="container">
       <span class="eyebrow">Резюме</span>
       <h2 class="display" style="margin-top:0.75rem; max-width:880px">
-        Hermes — это <span class="gold-text">не прототип</span>.<br />
-        Это production-ready приложение.
+        Готовый <span class="gold-text">production-ready</span> продукт<br />
+        для серьёзной торговли
       </h2>
 
       <div class="grid grid-4" style="margin-top:3rem">
@@ -965,8 +965,8 @@
       </div>
 
       <div class="quote" style="margin-top:3rem; font-size:1.7rem">
-        Это инструмент для оператора, который хочет видеть как работают деньги.
-        Не «продай свои навыки боту» — а «вот мои правила, исполняй и докладывай».
+        Hermes даёт оператору видеть как работают его деньги.
+        Правила задаёт человек, бот исполняет и докладывает по каждой сделке.
       </div>
     </div>
   </section>

@@ -1,4 +1,4 @@
-"""Broker management — CRUD + connectivity test."""
+"""Broker management - CRUD + connectivity test."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ async def test(
 ) -> BrokerTestResult:
     """Try connecting + fetching balance, then disconnect. Doesn't persist anything."""
     creds = _build_creds(req)
-    adapter = registry._build(creds)  # noqa: SLF001 — local build, not registered
+    adapter = registry._build(creds)  # noqa: SLF001 - local build, not registered
     try:
         await adapter.connect()
         info = await adapter.get_account()
@@ -129,7 +129,7 @@ async def broker_health(
     broker_id: int,
     registry: BrokerRegistry = Depends(get_broker_registry),
 ) -> dict:
-    """Live connectivity check — used by the dashboard banner to detect
+    """Live connectivity check - used by the dashboard banner to detect
     silent disconnects (MT5 terminal closed, auth expired, etc.).
     """
     return await registry.health(broker_id)
@@ -164,7 +164,7 @@ async def activate_broker(
     row.is_active = True
     await session.commit()
     # Eagerly connect through the registry so the dashboard can render
-    # balance/positions immediately — without this the user sees an empty
+    # balance/positions immediately - without this the user sees an empty
     # account card until they hit "Запустить", which is misleading.
     await registry.connect_from_db(broker_id, vault, session)
     return BrokerOut(

@@ -1,4 +1,4 @@
-"""Auto-update — checks baicore.kz for newer Hermes releases.
+"""Auto-update - checks baicore.kz for newer Hermes releases.
 
 Endpoint contract (`GET https://baicore.kz/api/hermes/latest`):
 
@@ -71,7 +71,7 @@ def _platform_key() -> str:
 async def check_for_update(*, timeout: float = 6.0) -> UpdateInfo:
     """Fetch the manifest and compare against current version."""
     try:
-        # follow_redirects=True: baicore.kz issues a 307 to www.baicore.kz —
+        # follow_redirects=True: baicore.kz issues a 307 to www.baicore.kz -
         # without this the update check silently fails on every poll and
         # users never see new versions in the Settings page.
         async with httpx.AsyncClient(

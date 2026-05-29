@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    host: str = Field(default="127.0.0.1", description="Bind address — always loopback in production")
+    host: str = Field(default="127.0.0.1", description="Bind address - always loopback in production")
     port: int = Field(default=0, description="0 = ephemeral, set by desktop launcher")
     log_level: str = Field(default="INFO")
 

@@ -35,7 +35,7 @@ export function PositionsTable({ positions, loading }: Props) {
 
   const handleClose = async (ticket: string, symbol: string) => {
     // window.confirm is the lightest, most predictable confirmation
-    // path inside the PyWebView shell — no modal coordination, no
+    // path inside the PyWebView shell - no modal coordination, no
     // accessibility surprises. The cost is the OS-native dialog,
     // which is fine for an "are you sure" gate.
     if (!window.confirm(`Закрыть позицию ${symbol} (тикет ${ticket})?`)) return;

@@ -8,7 +8,7 @@ import { ThemeProvider } from "./theme/ThemeProvider";
 import "./styles/index.css";
 
 // Forward any JS error / unhandled rejection to the backend log so it
-// shows up in hermes.log — --windowed builds have no devtools.
+// shows up in hermes.log - --windowed builds have no devtools.
 function reportClientError(message: string, stack: string) {
   try {
     fetch("/api/system/log-client-error", {
@@ -21,12 +21,18 @@ function reportClientError(message: string, stack: string) {
   }
 }
 window.addEventListener("error", (e) => {
+  // Swallow at window level so a single async hiccup doesn't poison
+  // the rest of the app. Real React render errors still hit
+  // ErrorBoundary; this guard catches the "fire and forget" rejects
+  // and stray setTimeout throws that WebView2 otherwise propagates.
   reportClientError(e.message ?? "error", e.error?.stack ?? "");
+  e.preventDefault();
 });
 window.addEventListener("unhandledrejection", (e) => {
   const reason = e.reason as { message?: string; stack?: string } | string;
   if (typeof reason === "string") reportClientError(reason, "");
   else reportClientError(reason?.message ?? "unhandled rejection", reason?.stack ?? "");
+  e.preventDefault();
 });
 
 const queryClient = new QueryClient({

@@ -1,4 +1,4 @@
-"""BrokerRegistry — lookup-by-id for active broker adapter instances.
+"""BrokerRegistry - lookup-by-id for active broker adapter instances.
 
 The registry holds one adapter per broker_account.id. It is process-wide
 (singletons live in app.state) and serializes connect/disconnect via locks
@@ -70,7 +70,7 @@ class BrokerRegistry:
         return self._active_id
 
     async def health(self, account_id: int) -> dict:
-        """Liveness probe — actually pokes the adapter.
+        """Liveness probe - actually pokes the adapter.
 
         We can't rely on `account_id in self._adapters` alone because the
         SDK socket may have dropped (e.g. MT5 terminal logged out, server
@@ -119,7 +119,7 @@ class BrokerRegistry:
         Used right after activation so the dashboard can show balance,
         positions, etc. without waiting for trading to start. Returns
         None gracefully if the account row, vault entry, or connection
-        attempt fails — caller decides how to surface that to the UI.
+        attempt fails - caller decides how to surface that to the UI.
         """
         from app.db.models import BrokerAccount  # local import to avoid cycle
 

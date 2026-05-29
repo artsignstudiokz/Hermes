@@ -1,4 +1,4 @@
-"""Policy — overlay the current market regime onto a calibrated base config."""
+"""Policy - overlay the current market regime onto a calibrated base config."""
 
 from __future__ import annotations
 
@@ -19,6 +19,6 @@ def apply_overlay(base_params: dict, regime: Regime) -> dict:
         out["max_grid_levels"] = max(2, out.get("max_grid_levels", 6) - 2)
         out["risk_per_trade_pct"] = out.get("risk_per_trade_pct", 1.0) * 0.6
     elif regime == "trend":
-        # Default works well — minor lot increase to ride trends.
+        # Default works well - minor lot increase to ride trends.
         out["lot_multiplier"] = min(out.get("lot_multiplier", 1.3) + 0.05, 1.6)
     return out

@@ -1,4 +1,4 @@
-"""StrategyRunner — bridges legacy GridStrategy to the BrokerAdapter contract.
+"""StrategyRunner - bridges legacy GridStrategy to the BrokerAdapter contract.
 
 The legacy strategy is broker-agnostic: it consumes a price dict and emits
 action dicts. The runner:
@@ -81,7 +81,7 @@ class StrategyRunner:
 
         # Indicator panel + signal ensemble. The ensemble runs alongside
         # the legacy grid every tick and produces explainable SignalReport
-        # objects that the worker broadcasts on /ws/signals — this is how
+        # objects that the worker broadcasts on /ws/signals - this is how
         # the dashboard shows "Бот рассматривает EURUSD: tend up, MACD+,
         # RSI 62" in real time, with reasoning.
         self._panel = IndicatorPanel()
@@ -98,7 +98,7 @@ class StrategyRunner:
         for s in self._symbols:
             info = info_map.get(s)
             if info is None:
-                logger.warning("Symbol %s unavailable on broker — skipping", s)
+                logger.warning("Symbol %s unavailable on broker - skipping", s)
                 continue
             self._pair_cfgs.append(self._PairConfig(
                 symbol=s,
@@ -123,7 +123,7 @@ class StrategyRunner:
 
     @property
     def last_snapshots(self) -> dict:
-        """Per-symbol IndicatorSnapshot from the most recent tick — the
+        """Per-symbol IndicatorSnapshot from the most recent tick - the
         worker uses these to run its own per-mode ensemble (proven vs
         autonomous), without re-fetching OHLCV.
         """
@@ -137,8 +137,8 @@ class StrategyRunner:
         """Run one analysis cycle. Returns list of actions executed.
 
         When dry_run is True, the strategy still evaluates indicators,
-        regime, and signals — actions are tagged with action["dry_run"]=True
-        and broadcast to the SPA so the user can see *would-be* trades —
+        regime, and signals - actions are tagged with action["dry_run"]=True
+        and broadcast to the SPA so the user can see *would-be* trades -
         but no order is sent to the broker. Use this to watch the bot's
         decision-making before flipping live trading on.
         """
@@ -150,7 +150,7 @@ class StrategyRunner:
 
         prices: dict[str, dict] = {}
         close_dict: dict[str, pd.Series] = {}
-        # Per-symbol indicator panel snapshot — fed to the ensemble below.
+        # Per-symbol indicator panel snapshot - fed to the ensemble below.
         # Wrapped in try/except per pair so one broken symbol doesn't
         # blank the dashboard for the rest.
         panel_snaps = {}

@@ -1,4 +1,4 @@
-"""MetaTrader 5 adapter — wraps the synchronous SDK in async threads.
+"""MetaTrader 5 adapter - wraps the synchronous SDK in async threads.
 
 The MetaTrader5 Python package only works on Windows. Import is therefore
 deferred until `connect()` so the rest of the app remains importable on
@@ -214,7 +214,7 @@ class MT5Adapter(BrokerAdapter):
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
-        # Broker-side SL/TP — survive bot crashes, OS reboots, network
+        # Broker-side SL/TP - survive bot crashes, OS reboots, network
         # drops. MT5 will close the position autonomously when price
         # touches either level. We send them as absolute prices because
         # different brokers quote different decimal places per symbol.

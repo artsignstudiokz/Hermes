@@ -1,4 +1,4 @@
-"""CCXT adapter — Phase 4 stub. Full implementation lands in Phase 4.
+"""CCXT adapter - Phase 4 stub. Full implementation lands in Phase 4.
 
 Defined here so BrokerRegistry compiles and the type system already knows
 about Binance/Bybit/OKX paths.

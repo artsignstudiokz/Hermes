@@ -24,12 +24,12 @@ const TONES = {
   wine:    { ring: "ring-hermes-wine/40",    bar: "text-hermes-wine",       glow: "rgba(122,27,39,0.4)" },
 };
 
-/** Premium KPI card — floating glow + count-up + optional sparkline + delta chip. */
+/** Premium KPI card - floating glow + count-up + optional sparkline + delta chip. */
 export function KpiCard({ label, value, hint, delta, icon: Icon, tone = "gold", sparkline }: Props) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const t = TONES[tone];
 
-  // Subtle 3D tilt on cursor — adds depth without being distracting.
+  // Subtle 3D tilt on cursor - adds depth without being distracting.
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotX = useSpring(useTransform(y, [-1, 1], [4, -4]), { stiffness: 200, damping: 25 });

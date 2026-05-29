@@ -41,7 +41,7 @@ export function MobileLink() {
           Hermes <span className="gold-text">на телефоне</span>
         </h1>
         <p className="mt-2 max-w-2xl font-serif italic text-muted-foreground">
-          Один QR — и весь интерфейс открывается на iPhone или Android. Защита через
+          Один QR - и весь интерфейс открывается на iPhone или Android. Защита через
           одноразовый PIN, который меняется раз в сутки.
         </p>
       </header>
@@ -66,7 +66,7 @@ export function MobileLink() {
             <Detail label="Адрес">
               <div className="flex items-center gap-2">
                 <code className="block flex-1 truncate rounded-lg border border-hermes-gold/30 bg-hermes-alabaster px-3 py-2 font-mono text-xs">
-                  {url ?? "—"}
+                  {url ?? "-"}
                 </code>
                 <button
                   onClick={copyLink}
@@ -86,7 +86,7 @@ export function MobileLink() {
             <Detail label="PIN-код">
               <div className="flex items-center gap-2">
                 <div className="flex-1 rounded-lg border border-hermes-gold/30 bg-hermes-alabaster px-3 py-2 font-mono text-xl tracking-[0.3em]">
-                  {pin ?? "—"}
+                  {pin ?? "-"}
                 </div>
                 <button
                   onClick={() => regen.mutate()}
@@ -125,7 +125,7 @@ export function MobileLink() {
 
           {start.error && (
             <p className="mt-3 text-xs text-hermes-wine">
-              Не удалось поднять туннель: {(start.error as Error).message}. Возможно, нужен ngrok-токен —
+              Не удалось поднять туннель: {(start.error as Error).message}. Возможно, нужен ngrok-токен -
               задайте через переменную окружения <code className="font-mono">BCT_NGROK_AUTHTOKEN</code>.
             </p>
           )}
@@ -142,12 +142,12 @@ export function MobileLink() {
             ) : (
               <div className="flex flex-col items-center gap-2 text-muted-foreground">
                 <Smartphone size={36} />
-                <span className="text-xs">Активируйте туннель — QR появится</span>
+                <span className="text-xs">Активируйте туннель - QR появится</span>
               </div>
             )}
           </div>
           <p className="mt-4 max-w-xs text-xs text-muted-foreground">
-            На телефоне откроется PWA — вы сможете «Установить на главный экран» как полноценное
+            На телефоне откроется PWA - вы сможете «Установить на главный экран» как полноценное
             приложение.
           </p>
         </section>
@@ -156,10 +156,10 @@ export function MobileLink() {
       <section className="marble-card p-6 text-sm">
         <h2 className="display text-lg font-semibold">Как это работает</h2>
         <ol className="mt-3 space-y-2 text-muted-foreground">
-          <li><span className="text-hermes-gold-deep">①</span> Нажмите «Открыть туннель» — Hermes откроет защищённый ngrok-канал.</li>
+          <li><span className="text-hermes-gold-deep">①</span> Нажмите «Открыть туннель» - Hermes откроет защищённый ngrok-канал.</li>
           <li><span className="text-hermes-gold-deep">②</span> Отсканируйте QR с телефона. Откроется тот же интерфейс.</li>
           <li><span className="text-hermes-gold-deep">③</span> Введите 6-значный PIN. После 5 неудачных попыток туннель блокируется на 10 минут.</li>
-          <li><span className="text-hermes-gold-deep">④</span> Когда не нужно — нажмите «Закрыть туннель». Внешний доступ выключен.</li>
+          <li><span className="text-hermes-gold-deep">④</span> Когда не нужно - нажмите «Закрыть туннель». Внешний доступ выключен.</li>
         </ol>
       </section>
     </motion.div>

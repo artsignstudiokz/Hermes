@@ -19,7 +19,7 @@ export function Onboarding() {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Skip phases that are already done — handles refresh mid-onboarding.
+  // Skip phases that are already done - handles refresh mid-onboarding.
   useEffect(() => {
     if (!status.data) return;
     if (status.data.first_run) {
@@ -80,7 +80,7 @@ export function Onboarding() {
           </div>
           <h1 className="display mt-4 text-3xl font-semibold gold-text">Всё настроено</h1>
           <p className="mt-2 font-serif italic text-muted-foreground">
-            «Жду вашего знака — нажмите «Запустить» на панели, когда будете готовы.»
+            «Жду вашего знака - нажмите «Запустить» на панели, когда будете готовы.»
           </p>
           <button
             onClick={() => location.assign("/")}
@@ -174,7 +174,7 @@ function PasswordSetup({ onNext }: { onNext: () => void }) {
       <BrandMark size="md" />
       <h2 className="display mt-6 text-3xl font-semibold gold-text">Создайте мастер-пароль</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Этот пароль шифрует все ключи API ваших бирж. Запишите его в надёжное место —
+        Этот пароль шифрует все ключи API ваших бирж. Запишите его в надёжное место -
         восстановить нельзя.
       </p>
 

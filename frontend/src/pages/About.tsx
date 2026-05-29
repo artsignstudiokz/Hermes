@@ -21,8 +21,8 @@ export function About() {
       <div className="marble-card p-8">
         <h2 className="display text-2xl font-semibold">О боге торговли</h2>
         <p className="mt-3 font-serif text-base leading-relaxed text-muted-foreground">
-          В греческой мифологии Гермес — посланник богов и покровитель торговцев, путников и удачи.
-          Hermes — это алгоритмическая воплощение его роли: круглосуточный спутник трейдера,
+          В греческой мифологии Гермес - посланник богов и покровитель торговцев, путников и удачи.
+          Hermes - это алгоритмическая воплощение его роли: круглосуточный спутник трейдера,
           анализирующий рынок и совершающий сделки от вашего имени.
         </p>
       </div>
@@ -35,7 +35,7 @@ export function About() {
         <div className="mt-4 flex flex-col gap-3 text-sm">
           <div className="flex items-center gap-3">
             <span className="font-serif text-2xl text-hermes-gold-deep">BAI Core</span>
-            <span className="text-muted-foreground">— компания, создавшая Hermes</span>
+            <span className="text-muted-foreground">- компания, создавшая Hermes</span>
           </div>
           <button
             onClick={() => win.openExternal(brand.developerUrl)}

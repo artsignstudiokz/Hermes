@@ -25,7 +25,7 @@ export function BrandMark({ size = "md", showText = true, className, full }: Bra
       <div className={cn("flex items-center", className)}>
         <img
           src="/hermes-logo.png"
-          alt="Hermes — Trading Bot"
+          alt="Hermes - Trading Bot"
           height={s.svg}
           style={{ height: s.svg, width: "auto" }}
           className="select-none"

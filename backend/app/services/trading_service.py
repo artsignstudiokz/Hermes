@@ -1,4 +1,4 @@
-"""TradingService — single orchestrator the routes/workers go through."""
+"""TradingService - single orchestrator the routes/workers go through."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ class TradingService:
 
     @property
     def status(self) -> dict:
-        # Worker is always a dict — same shape as TradingWorker.state —
+        # Worker is always a dict - same shape as TradingWorker.state -
         # so the SPA can read .mode / .trades_today without first
         # checking if a worker exists. Default values reflect the
         # "never started" state.
@@ -140,7 +140,7 @@ class TradingService:
 
     def enable_trading(self) -> dict:
         if self._worker is None:
-            raise ValueError("Trading worker not started — click Start first")
+            raise ValueError("Trading worker not started - click Start first")
         self._worker.enable_trading()
         return self.status
 
@@ -153,7 +153,7 @@ class TradingService:
     async def start_proven(self, broker_account_id: int) -> dict:
         """Start the worker and set it into the proven scenario mode.
 
-        Only one mode runs at a time — if the worker is already up in
+        Only one mode runs at a time - if the worker is already up in
         autonomous mode we flip it; otherwise we boot the worker first
         and then set the mode.
         """
@@ -171,7 +171,7 @@ class TradingService:
     def set_mode(self, mode: str) -> dict:
         """Generic mode setter used by the legacy enable/disable endpoints."""
         if self._worker is None:
-            raise ValueError("Trading worker not started — click Start first")
+            raise ValueError("Trading worker not started - click Start first")
         self._worker.set_mode(mode)
         return self.status
 
@@ -184,7 +184,7 @@ class TradingService:
         the returned report so the user sees exactly WHY this pair,
         WHAT indicators agreed, and the markdown reasoning.
 
-        dry_run=True returns the analysis without placing the order —
+        dry_run=True returns the analysis without placing the order -
         used by the "Глубокий анализ" preview button.
         """
         from app.core.brokers.models import Direction, OrderRequest
@@ -193,7 +193,7 @@ class TradingService:
 
         adapter = self._registry.get_active()
         if adapter is None:
-            raise ValueError("No active broker — connect one first")
+            raise ValueError("No active broker - connect one first")
 
         # Load active strategy config to know which symbols + ensemble.
         sm = get_sessionmaker()
@@ -203,7 +203,7 @@ class TradingService:
         symbols = params.get("symbols") or [
             "EURUSD", "GBPUSD", "EURCHF", "EURJPY", "USDCHF", "USDJPY",
         ]
-        # Default ensemble — see v1.0.22 backtest in
+        # Default ensemble - see v1.0.22 backtest in
         # scripts/backtest_ensemble.py for the reasoning behind
         # excluding MeanReversion/Breakout from the default.
         ensemble = build_ensemble(
@@ -221,7 +221,7 @@ class TradingService:
             except Exception as e:  # noqa: BLE001
                 logger.warning("Analyze skipped %s: %s", sym, e)
 
-        # Sort by confidence — only act if the bot is actually convinced.
+        # Sort by confidence - only act if the bot is actually convinced.
         actionable = [r for r in reports if r.direction != "flat" and r.confidence >= 0.5]
         actionable.sort(key=lambda r: r.confidence, reverse=True)
 
@@ -278,7 +278,7 @@ class TradingService:
 
         adapter = self._registry.get_active()
         if adapter is None:
-            raise ValueError("No active broker — connect one first")
+            raise ValueError("No active broker - connect one first")
         d = Direction.LONG if direction.lower() == "long" else Direction.SHORT
         order = await adapter.place_order(OrderRequest(
             symbol=symbol, direction=d, lot_size=lot_size, comment=comment,

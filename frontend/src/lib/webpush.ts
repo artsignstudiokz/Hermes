@@ -1,5 +1,5 @@
 /**
- * Web Push helpers — convert VAPID key, request permission, subscribe via SW.
+ * Web Push helpers - convert VAPID key, request permission, subscribe via SW.
  */
 
 function urlBase64ToUint8Array(b64url: string): Uint8Array {
@@ -33,7 +33,7 @@ export async function subscribeForPush(vapidPublicKey: string): Promise<Serializ
   if (existing) return serialize(existing);
 
   // applicationServerKey expects BufferSource. TS 5.7 narrows Uint8Array's
-  // ArrayBufferLike — use the underlying buffer slice as ArrayBuffer.
+  // ArrayBufferLike - use the underlying buffer slice as ArrayBuffer.
   const keyBytes = urlBase64ToUint8Array(vapidPublicKey);
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,

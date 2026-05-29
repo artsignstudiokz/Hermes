@@ -1,4 +1,4 @@
-"""Onboarding state — derived from existing artefacts (vault, brokers, strategy)."""
+"""Onboarding state - derived from existing artefacts (vault, brokers, strategy)."""
 
 from __future__ import annotations
 

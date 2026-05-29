@@ -56,7 +56,7 @@ export function Step2Strategy({ onPrev, onNext }: Props) {
       <div>
         <h2 className="display text-3xl font-semibold gold-text">Выберите стиль торговли</h2>
         <p className="mt-2 font-serif italic text-muted-foreground">
-          Можно поменять позже на странице «Стратегия». Auto — Hermes сам подберёт под рынок.
+          Можно поменять позже на странице «Стратегия». Auto - Hermes сам подберёт под рынок.
         </p>
       </div>
 

@@ -5,7 +5,7 @@
  * Subscriptions are reference-counted with a linger window: when the
  * last consumer unsubscribes we wait LINGER_MS before actually closing
  * the socket. If a new subscriber arrives in that window we cancel the
- * close and keep the same socket — this prevents an open/close/open
+ * close and keep the same socket - this prevents an open/close/open
  * storm when React quickly remounts components (Strict Mode in dev,
  * Suspense boundaries, route transitions).
  */

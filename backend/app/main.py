@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
     )
 
     # Global handler so any unhandled exception is logged AND returned to
-    # the SPA with a useful message — otherwise a 500 in a frozen build is
+    # the SPA with a useful message - otherwise a 500 in a frozen build is
     # invisible (no console, uvicorn's logger doesn't propagate to file).
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
@@ -98,7 +98,7 @@ def create_app() -> FastAPI:
                 return FileResponse(target)
             return FileResponse(index_html)
     else:
-        logger.warning("Frontend static dir not found at %s — running API-only", static_dir)
+        logger.warning("Frontend static dir not found at %s - running API-only", static_dir)
 
     return app
 

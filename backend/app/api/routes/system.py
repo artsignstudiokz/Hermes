@@ -83,6 +83,48 @@ async def tail_logs(
     return LogsResponse(lines=[ln.rstrip("\n") for ln in lines])
 
 
+class UiPrefs(BaseModel):
+    tutorial_done: bool = False
+    tutorial_version: str = ""
+
+
+def _prefs_path(settings: "Settings") -> Path:
+    return settings.data_dir / "ui-prefs.json"
+
+
+@router.get("/ui-prefs", response_model=UiPrefs)
+async def get_ui_prefs(settings: Settings = Depends(get_app_settings)) -> UiPrefs:
+    """Read UI preferences from disk.
+
+    Why backend instead of localStorage: PyWebView opens the SPA on an
+    ephemeral 127.0.0.1 port that changes on every restart. localStorage
+    scopes to host+port, so the "tutorial completed" flag was lost on
+    every relaunch, and the tour kept replaying. Storing it in
+    %APPDATA%\\BAI Core\\Hermes\\ui-prefs.json survives restarts.
+    """
+    import json
+    p = _prefs_path(settings)
+    if not p.exists():
+        return UiPrefs()
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return UiPrefs(**data)
+    except Exception:
+        return UiPrefs()
+
+
+@router.post("/ui-prefs", response_model=UiPrefs)
+async def set_ui_prefs(
+    body: UiPrefs,
+    settings: Settings = Depends(get_app_settings),
+) -> UiPrefs:
+    import json
+    p = _prefs_path(settings)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(body.model_dump_json(indent=2), encoding="utf-8")
+    return body
+
+
 @router.get("/logs/bundle")
 async def logs_bundle(
     settings: Settings = Depends(get_app_settings),
@@ -90,7 +132,7 @@ async def logs_bundle(
     """Pack the last 14 days of hermes.log plus a small system report
     into a single ZIP the operator can attach to a support request.
 
-    Deliberately scrubs nothing — the operator can edit the archive
+    Deliberately scrubs nothing - the operator can edit the archive
     before sending. Vault file and credentials.enc are EXCLUDED by
     path, never touched.
     """

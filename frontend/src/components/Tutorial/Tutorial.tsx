@@ -1,5 +1,5 @@
 /**
- * First-run tutorial — game-style walkthrough with cinematic intro.
+ * First-run tutorial - game-style walkthrough with cinematic intro.
  *
  * Stored in localStorage under HERMES_TOUR_VERSION so we can bump it
  * (e.g. when a major UI change lands) and re-show. Users who already
@@ -11,30 +11,47 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
+import { api } from "@/lib/api";
 import { TUTORIAL_STEPS, type TutorialStep } from "./steps";
 
-const STORAGE_KEY = "hermes.tour.completed";
-const CURRENT_TOUR_VERSION = "v1.0.21";
+const CURRENT_TOUR_VERSION = "v1.0.28";
 
-export function shouldShowTutorial(): boolean {
+interface UiPrefs {
+  tutorial_done: boolean;
+  tutorial_version: string;
+}
+
+/* Persisted on the backend (data_dir/ui-prefs.json), not localStorage.
+   Reason: PyWebView opens the SPA on an ephemeral 127.0.0.1 port that
+   changes every restart, so localStorage (scoped to host+port) lost
+   the "done" flag and the tour replayed on every launch. */
+
+export async function shouldShowTutorial(): Promise<boolean> {
   try {
-    return localStorage.getItem(STORAGE_KEY) !== CURRENT_TOUR_VERSION;
+    const p = await api.get<UiPrefs>("/api/system/ui-prefs");
+    return !p.tutorial_done || p.tutorial_version !== CURRENT_TOUR_VERSION;
   } catch {
     return true;
   }
 }
 
-export function markTutorialDone(): void {
+export async function markTutorialDone(): Promise<void> {
   try {
-    localStorage.setItem(STORAGE_KEY, CURRENT_TOUR_VERSION);
+    await api.post<UiPrefs, UiPrefs>("/api/system/ui-prefs", {
+      tutorial_done: true,
+      tutorial_version: CURRENT_TOUR_VERSION,
+    });
   } catch {
-    /* private browsing — give up gracefully */
+    /* swallow */
   }
 }
 
-export function resetTutorial(): void {
+export async function resetTutorial(): Promise<void> {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    await api.post<UiPrefs, UiPrefs>("/api/system/ui-prefs", {
+      tutorial_done: false,
+      tutorial_version: "",
+    });
   } catch {
     /* swallow */
   }
@@ -46,13 +63,20 @@ interface Props {
 }
 
 export function Tutorial({ open, onClose }: Props) {
-  const [step, setStep] = useState(0);
-  const current: TutorialStep = TUTORIAL_STEPS[step];
+  // Clamp step into the valid range. If TUTORIAL_STEPS ever changes
+  // length while a stale flag points past the end (or a renderer
+  // miscalculates), `current.anchor` would throw and crash the whole
+  // app - that's the bug that produced the white screen after
+  // restart. Clamping makes the component crash-proof.
+  const total = TUTORIAL_STEPS.length;
+  const [rawStep, setStep] = useState(0);
+  const step = Math.max(0, Math.min(rawStep, total - 1));
+  const current: TutorialStep = TUTORIAL_STEPS[step] ?? TUTORIAL_STEPS[0];
   const isFirst = step === 0;
-  const isLast = step === TUTORIAL_STEPS.length - 1;
+  const isLast = step === total - 1;
 
-  // Anchor highlight position — measured each step.
-  const spotlight = useAnchorRect(current.anchor);
+  // Anchor highlight position, measured each step.
+  const spotlight = useAnchorRect(current?.anchor ?? null);
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +90,10 @@ export function Tutorial({ open, onClose }: Props) {
   }, [open, isFirst, isLast, onClose]);
 
   const finish = () => {
-    markTutorialDone();
+    // Fire and forget: close immediately so the UI is responsive,
+    // let the backend persist in the background. Errors are swallowed
+    // inside markTutorialDone itself.
+    void markTutorialDone();
     onClose();
   };
 
@@ -116,7 +143,7 @@ export function Tutorial({ open, onClose }: Props) {
             />
           )}
 
-          {/* Spinning Hermes coin in upper-right — passive aesthetic */}
+          {/* Spinning Hermes coin in upper-right - passive aesthetic */}
           <CoinOrnament />
 
           {/* The step card */}
@@ -258,7 +285,7 @@ function useAnchorRect(selector: string | null): DOMRect | null {
   return rect;
 }
 
-/** Single character at a time — gives the title a cinematic feel. */
+/** Single character at a time - gives the title a cinematic feel. */
 function RevealText({ text }: { text: string }) {
   const letters = useMemo(() => Array.from(text), [text]);
   return (

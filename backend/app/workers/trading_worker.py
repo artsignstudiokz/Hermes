@@ -46,7 +46,7 @@ class TradingWorker:
         self._last_tick: datetime | None = None
         self._last_error: str | None = None
         self._tick_count = 0
-        # Trading mode — mutually exclusive with itself by virtue of one
+        # Trading mode - mutually exclusive with itself by virtue of one
         # worker per service. Values: "off" (observation only, no orders),
         # "proven" (single calibrated strategy, strict confidence, 1-3
         # trades/day, only on the configured 3-5 pairs), "autonomous"
@@ -60,24 +60,24 @@ class TradingWorker:
         self._max_trades_per_day = 3
         # Minimum confidence for a signal to actually open a trade.
         # Stricter in proven mode (best historical pattern wanted),
-        # looser in autonomous (still ≥0.5 — never YOLO).
+        # looser in autonomous (still ≥0.5 - never YOLO).
         self._confidence_thresholds = {"proven": 0.7, "autonomous": 0.5}
         # Pre-built ensembles. Constructed once on mode change instead of
-        # every tick — `build_ensemble` instantiates strategy objects so
+        # every tick - `build_ensemble` instantiates strategy objects so
         # rebuilding 1× per minute is wasteful and shows up in profiles
         # over a 12-hour session.
         self._ensemble_cache: dict = {}
-        # Guard for the entry path — prevents a second tick from racing
+        # Guard for the entry path - prevents a second tick from racing
         # ahead and double-opening when MT5 place_order is slow (some
         # brokers take 2-3s to respond).
         self._entry_lock = asyncio.Lock()
-        # Risk engine — hard circuit breakers (daily loss, drawdown,
+        # Risk engine - hard circuit breakers (daily loss, drawdown,
         # max concurrent positions). Tripped state survives mode flips;
         # only UTC-midnight rollover clears it. See app.core.risk.engine
         # for thresholds.
         from app.core.risk.engine import RiskEngine
         self._risk = RiskEngine()
-        # MT5 watchdog — counts consecutive broker-health-probe failures
+        # MT5 watchdog - counts consecutive broker-health-probe failures
         # so we can pause and surface a clear "broker_down" event to the
         # SPA instead of silently trading on stale state.
         self._consecutive_health_fails = 0
@@ -144,7 +144,7 @@ class TradingWorker:
             account = await self._adapter.get_account()
             self._risk.reset(float(account.equity))
         except Exception:  # noqa: BLE001
-            logger.warning("Could not seed risk engine on start — will use first tick equity")
+            logger.warning("Could not seed risk engine on start - will use first tick equity")
 
         # Seed an immediate observation tick so existing broker positions
         # and balance show up on the Dashboard at once.
@@ -205,7 +205,7 @@ class TradingWorker:
             for row in open_rows:
                 if str(row.ticket) in live_tickets:
                     continue
-                # Already manually closed via the API? Skip — _mark_trade_closed
+                # Already manually closed via the API? Skip - _mark_trade_closed
                 # may have just committed in a different session.
                 row.closed_at = now
                 # Don't overwrite a reason set by another path (manual /
@@ -248,7 +248,7 @@ class TradingWorker:
                     "ts": datetime.now(timezone.utc).isoformat(),
                 }
                 await self._ws.broadcast("signals", down_event)
-                # Tell the operator their bot is paused — Telegram/web
+                # Tell the operator their bot is paused - Telegram/web
                 # push so they see it even when away from the dashboard.
                 if self._notifier is not None:
                     try:
@@ -282,7 +282,7 @@ class TradingWorker:
           5. proven mode: report.symbol must be in configured pairs
 
         Wrapped in self._entry_lock so a slow MT5 place_order can't be
-        racing with the next 60-second tick — that's what caused dupe
+        racing with the next 60-second tick - that's what caused dupe
         opens on the same minute in early bench testing.
         """
         from app.db.models import TradeRow
@@ -297,10 +297,10 @@ class TradingWorker:
 
         ensemble = self._ensemble_cache.get(self._mode)
         if ensemble is None:
-            return     # set_mode wasn't called — defensive
+            return     # set_mode wasn't called - defensive
 
         # Re-run the ensemble against the snapshots the runner just
-        # computed — quick (no OHLCV refetch).
+        # computed - quick (no OHLCV refetch).
         candidates = [ensemble.evaluate(snap) for snap in self._runner.last_snapshots.values()]
         # Proven mode: restrict to the strategy's configured symbols
         # (defaults to 3-5 majors picked at onboarding).
@@ -316,7 +316,7 @@ class TradingWorker:
         actionable.sort(key=lambda c: c.confidence, reverse=True)
         best = actionable[0]
 
-        # Risk gate — daily loss / drawdown / max positions. The engine
+        # Risk gate - daily loss / drawdown / max positions. The engine
         # was updated in _tick with the latest account & positions count.
         ok, reason = self._risk.allow_new_entry()
         if not ok:
@@ -330,7 +330,7 @@ class TradingWorker:
         d = Direction.LONG if best.direction == "long" else Direction.SHORT
 
         # Compute broker-side SL/TP from the symbol's ATR. The position
-        # then closes autonomously if the bot dies — we use 2×ATR stop
+        # then closes autonomously if the bot dies - we use 2×ATR stop
         # and 4×ATR target (1:2 risk/reward). ATR is in price units, so
         # adding/subtracting it from the close gives an absolute price.
         snap = self._runner.last_snapshots.get(best.symbol)
@@ -361,7 +361,7 @@ class TradingWorker:
             if order is None:
                 logger.info("Broker returned None for auto-entry on %s", best.symbol)
                 return
-            # Increment under the same lock — closes the race where two
+            # Increment under the same lock - closes the race where two
             # concurrent ticks could both place_order before either bumps
             # the counter.
             self._trades_today += 1
@@ -392,7 +392,7 @@ class TradingWorker:
             "ts": self._last_tick.isoformat(),
         }
         await self._ws.broadcast("signals", trade_event)
-        # Push to web/telegram subscribers too — the operator may be
+        # Push to web/telegram subscribers too - the operator may be
         # away from the desk, and a trade-open is a notify-worthy
         # event. Best effort: notifier errors don't block.
         if self._notifier is not None:
@@ -463,14 +463,14 @@ class TradingWorker:
             raise
 
     async def _tick(self, sm) -> None:
-        # Watchdog probe — confirm the broker socket is alive BEFORE we
+        # Watchdog probe - confirm the broker socket is alive BEFORE we
         # spend time computing 19 indicators on stale data. If three
         # consecutive ticks fail, pause the worker and tell the SPA so
         # the user sees the wine banner instead of silent inactivity.
         if not await self._broker_health_probe():
             return
 
-        # The grid strategy still runs but ALWAYS in dry_run — it gives
+        # The grid strategy still runs but ALWAYS in dry_run - it gives
         # us close-basket actions for managing existing legacy positions
         # and indicator data for analysis, but it does NOT open new
         # entries any more. New entries are made strictly through the
@@ -508,7 +508,7 @@ class TradingWorker:
 
         # Mode-driven entry decision: pick the strongest report, open ONE
         # trade if it clears the per-mode confidence floor, daily quota,
-        # and risk-engine guards. Conservative on purpose — at most one
+        # and risk-engine guards. Conservative on purpose - at most one
         # pair per tick.
         await self._maybe_enter(sm)
 
@@ -574,7 +574,7 @@ class TradingWorker:
             "balance": account.balance,
             "margin": account.margin,
         })
-        # Field names MUST match PositionOut schema — frontend writes the
+        # Field names MUST match PositionOut schema - frontend writes the
         # WS payload directly into the ["positions"] react-query cache, so
         # any drift (lots vs lot_size, swap missing, etc.) → undefined →
         # `.toFixed` crash in PositionsTable.

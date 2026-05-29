@@ -1,4 +1,4 @@
-"""Web Push (VAPID) — generate keypair on first use, dispatch payloads."""
+"""Web Push (VAPID) - generate keypair on first use, dispatch payloads."""
 
 from __future__ import annotations
 

@@ -1,16 +1,16 @@
-"""Risk engine — hard circuit breakers that override the strategy.
+"""Risk engine - hard circuit breakers that override the strategy.
 
 This is the layer that says "no" to the bot when it has already lost
 too much in a single session, regardless of how good the next signal
 looks. Three guards:
 
-  1. Daily P&L floor       — if today's realised + unrealised P&L
+  1. Daily P&L floor       - if today's realised + unrealised P&L
                               drops below -X% of session start equity,
                               flip the worker to "off" and refuse new
                               entries until UTC midnight reset.
-  2. Equity drawdown floor — if equity from session-peak retraces by
+  2. Equity drawdown floor - if equity from session-peak retraces by
                               more than Y%, same circuit-breaker.
-  3. Open-position cap     — max N concurrent positions across the
+  3. Open-position cap     - max N concurrent positions across the
                               account; protects against grid-style
                               martingale runaways.
 
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RiskLimits:
     """Defaults intentionally conservative. Operators can override via
-    StrategyConfig.payload — see app.core.risk.engine.from_params."""
+    StrategyConfig.payload - see app.core.risk.engine.from_params."""
     daily_loss_pct: float = 0.05         # 5% of session-start equity
     drawdown_pct: float = 0.10           # 10% from session peak
     max_open_positions: int = 5
@@ -43,7 +43,7 @@ class RiskLimits:
 
 @dataclass
 class RiskState:
-    """Live state — gets serialised into the worker status dict so the
+    """Live state - gets serialised into the worker status dict so the
     SPA can render a banner explaining why trading is frozen."""
     session_start_equity: float = 0.0
     session_peak_equity: float = 0.0
@@ -73,7 +73,7 @@ class RiskEngine:
         ))
 
     def reset(self, equity: float) -> None:
-        """Call this on worker.start() — establishes the session baseline."""
+        """Call this on worker.start() - establishes the session baseline."""
         self.state = RiskState(
             session_start_equity=equity,
             session_peak_equity=equity,
@@ -83,7 +83,7 @@ class RiskEngine:
         logger.info("Risk engine reset: session start equity = %.2f", equity)
 
     def reset_for_new_day(self, equity: float) -> None:
-        """UTC-midnight rollover — clears the trip and rebases."""
+        """UTC-midnight rollover - clears the trip and rebases."""
         prev_tripped = self.state.tripped
         self.state = RiskState(
             session_start_equity=equity,
@@ -98,7 +98,7 @@ class RiskEngine:
         """Recompute live metrics. Trips the engine if any guard fires.
 
         Called from TradingWorker._tick AFTER fetching account info but
-        BEFORE _maybe_enter — so any new tick that would have crossed
+        BEFORE _maybe_enter - so any new tick that would have crossed
         the threshold is blocked.
         """
         today = _today_utc()
@@ -122,7 +122,7 @@ class RiskEngine:
         self.state.last_drawdown_pct = (peak - equity) / peak
 
         if self.state.tripped:
-            return    # already frozen — only cleared by reset_for_new_day
+            return    # already frozen - only cleared by reset_for_new_day
 
         if self.state.last_daily_pnl_pct <= -self.limits.daily_loss_pct:
             self._trip(
@@ -146,7 +146,7 @@ class RiskEngine:
         if self.state.open_positions >= self.limits.max_open_positions:
             return False, (
                 f"Open positions {self.state.open_positions} / "
-                f"{self.limits.max_open_positions} — bot is at capacity"
+                f"{self.limits.max_open_positions} - bot is at capacity"
             )
         return True, ""
 

@@ -1,5 +1,5 @@
 /**
- * Command palette registry. Commands are static — they're just navigation
+ * Command palette registry. Commands are static - they're just navigation
  * and a few imperative actions. Fuzzy search is a simple substring match
  * weighted by where the term hits (label > section > description).
  */

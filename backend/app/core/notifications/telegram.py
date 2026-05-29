@@ -1,4 +1,4 @@
-"""Telegram bot client — async, replaces legacy/telegram_bot.py.
+"""Telegram bot client - async, replaces legacy/telegram_bot.py.
 
 We avoid the heavy `python-telegram-bot` polling stack and use plain HTTP
 because all we ever do is sendMessage with HTML formatting.

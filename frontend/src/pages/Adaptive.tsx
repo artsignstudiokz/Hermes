@@ -1,5 +1,5 @@
 /**
- * Adaptive — manual triggers + history for the walk-forward calibration
+ * Adaptive - manual triggers + history for the walk-forward calibration
  * loop. Operator can:
  *   • see the live regime per pair
  *   • kick off an out-of-cycle calibration (the scheduler also runs
@@ -124,7 +124,7 @@ export function Adaptive() {
           </div>
         ) : regime.isError ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            Брокер не активен — режим определяется по живым данным OHLCV. Подключи брокера на странице
+            Брокер не активен - режим определяется по живым данным OHLCV. Подключи брокера на странице
             «Брокеры».
           </p>
         ) : (
@@ -224,7 +224,7 @@ export function Adaptive() {
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
             {selected.applied
-              ? "Этот челленджер применён — параметры активной стратегии заменены."
+              ? "Этот челленджер применён - параметры активной стратегии заменены."
               : selected.challenger_won
               ? "Челленджер показал лучший score, но не прошёл safety-проверку (min trades / max-DD). Не применён."
               : "Челленджер не обогнал текущие параметры. Применение пропущено."}
@@ -276,7 +276,7 @@ function ParamColumn({
 }
 
 function formatValue(v: unknown): string {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "-";
   if (typeof v === "number") return v.toString();
   if (typeof v === "boolean") return v ? "true" : "false";
   if (Array.isArray(v)) return `[${v.length}]`;

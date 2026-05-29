@@ -10,7 +10,7 @@ interface Props {
   className?: string;
 }
 
-/** Inline SVG sparkline — used inside KPI cards. */
+/** Inline SVG sparkline - used inside KPI cards. */
 export function MiniSparkline({
   values,
   width = 120,

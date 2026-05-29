@@ -5,7 +5,7 @@ interface Props {
   rounded?: "sm" | "md" | "lg" | "full";
 }
 
-/** Marble-tinted skeleton with subtle shimmer — for loading states. */
+/** Marble-tinted skeleton with subtle shimmer - for loading states. */
 export function Skeleton({ className, rounded = "md" }: Props) {
   const r = {
     sm: "rounded-md",
