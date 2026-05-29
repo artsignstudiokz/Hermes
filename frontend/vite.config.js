@@ -57,6 +57,12 @@ export default defineConfig(function (_a) {
         resolve: {
             alias: {
                 "@": path.resolve(__dirname, "src"),
+                // v1.0.37: replace framer-motion with a no-op shim. Trace logs
+                // pinned the WebView2 boot crash on framer-motion's per-frame
+                // work piling up under --disable-gpu, but the library is
+                // imported in 20+ places. Aliasing it lets us short-circuit the
+                // whole animation engine without rewriting every component.
+                "framer-motion": path.resolve(__dirname, "src/lib/framer-motion-shim.tsx"),
             },
         },
         server: {
