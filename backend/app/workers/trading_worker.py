@@ -71,6 +71,16 @@ class TradingWorker:
         # ahead and double-opening when MT5 place_order is slow (some
         # brokers take 2-3s to respond).
         self._entry_lock = asyncio.Lock()
+        # Risk engine — hard circuit breakers (daily loss, drawdown,
+        # max concurrent positions). Tripped state survives mode flips;
+        # only UTC-midnight rollover clears it. See app.core.risk.engine
+        # for thresholds.
+        from app.core.risk.engine import RiskEngine
+        self._risk = RiskEngine()
+        # MT5 watchdog — counts consecutive broker-health-probe failures
+        # so we can pause and surface a clear "broker_down" event to the
+        # SPA instead of silently trading on stale state.
+        self._consecutive_health_fails = 0
 
     @property
     def state(self) -> dict:
@@ -86,6 +96,7 @@ class TradingWorker:
             "last_tick": self._last_tick.isoformat() if self._last_tick else None,
             "tick_count": self._tick_count,
             "last_error": self._last_error,
+            "risk": self._risk.to_dict(),
         }
 
     def set_mode(self, mode: str) -> None:
@@ -93,13 +104,17 @@ class TradingWorker:
             raise ValueError(f"Unknown trading mode: {mode}")
         self._mode = mode
         # Ensure the ensemble for this mode is ready ahead of next tick.
+        # Default rosters were tuned in v1.0.22 after the walk-forward
+        # backtest: TrendFollowing + Momentum has positive expectancy on
+        # synthetic data; MeanReversion / Breakout enter only when the
+        # operator opts in via the strategy config (params["ensemble"]).
         if mode in ("proven", "autonomous") and mode not in self._ensemble_cache:
             from app.core.strategy.signals import build_ensemble
             if mode == "proven":
                 self._ensemble_cache[mode] = build_ensemble(["trend"], mode="any")
             else:
                 self._ensemble_cache[mode] = build_ensemble(
-                    ["trend", "mean_reversion", "breakout", "momentum"], mode="majority",
+                    ["trend", "momentum"], mode="majority",
                 )
         logger.info("Trading mode = %s for account %d", mode, self._account_id)
 
@@ -122,6 +137,15 @@ class TradingWorker:
             return
         await self._runner.setup()
         self._stop_evt.clear()
+        # Seed risk engine with the starting equity so daily-loss is
+        # measured from "the moment trading began this session", not
+        # from a stale value.
+        try:
+            account = await self._adapter.get_account()
+            self._risk.reset(float(account.equity))
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not seed risk engine on start — will use first tick equity")
+
         # Seed an immediate observation tick so existing broker positions
         # and balance show up on the Dashboard at once.
         sm = get_sessionmaker()
@@ -150,6 +174,49 @@ class TradingWorker:
 
     def resume(self) -> None:
         self._paused = False
+
+    async def _broker_health_probe(self) -> bool:
+        """Returns True if the adapter answered, False if we should skip
+        the tick (already paused / still trying to reconnect).
+        """
+        try:
+            await asyncio.wait_for(self._adapter.get_account(), timeout=8.0)
+            if self._consecutive_health_fails > 0:
+                logger.info(
+                    "Adapter recovered after %d failed probes",
+                    self._consecutive_health_fails,
+                )
+            self._consecutive_health_fails = 0
+            return True
+        except Exception as e:  # noqa: BLE001
+            self._consecutive_health_fails += 1
+            logger.warning(
+                "Adapter health probe failed (%d/3): %s",
+                self._consecutive_health_fails, e,
+            )
+            if self._consecutive_health_fails >= 3:
+                self._paused = True
+                self._last_error = f"Broker unreachable: {e}"
+                await self._ws.broadcast("signals", {
+                    "type": "broker_down",
+                    "reason": str(e),
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                })
+                return False
+            # Try to reconnect quietly between probes.
+            try:
+                await self._adapter.disconnect()
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                await self._adapter.connect()
+                logger.info(
+                    "Adapter reconnected after %d health-probe failures",
+                    self._consecutive_health_fails,
+                )
+            except Exception as e2:  # noqa: BLE001
+                logger.warning("Reconnect attempt failed: %s", e2)
+            return False
 
     async def _maybe_enter(self, sm) -> None:
         """Pick the best signal report and possibly open ONE trade.
@@ -195,6 +262,17 @@ class TradingWorker:
             return
         actionable.sort(key=lambda c: c.confidence, reverse=True)
         best = actionable[0]
+
+        # Risk gate — daily loss / drawdown / max positions. The engine
+        # was updated in _tick with the latest account & positions count.
+        ok, reason = self._risk.allow_new_entry()
+        if not ok:
+            logger.info("Risk engine vetoed entry on %s: %s", best.symbol, reason)
+            await self._ws.broadcast("signals", {
+                "type": "risk_block", "symbol": best.symbol, "reason": reason,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            })
+            return
 
         d = Direction.LONG if best.direction == "long" else Direction.SHORT
         async with self._entry_lock:
@@ -285,6 +363,13 @@ class TradingWorker:
             raise
 
     async def _tick(self, sm) -> None:
+        # Watchdog probe — confirm the broker socket is alive BEFORE we
+        # spend time computing 19 indicators on stale data. If three
+        # consecutive ticks fail, pause the worker and tell the SPA so
+        # the user sees the wine banner instead of silent inactivity.
+        if not await self._broker_health_probe():
+            return
+
         # The grid strategy still runs but ALWAYS in dry_run — it gives
         # us close-basket actions for managing existing legacy positions
         # and indicator data for analysis, but it does NOT open new
@@ -308,15 +393,18 @@ class TradingWorker:
             except Exception:  # noqa: BLE001
                 logger.debug("Failed to broadcast signal report", exc_info=True)
 
-        # Mode-driven entry decision: pick the strongest report, open ONE
-        # trade if it clears the per-mode confidence floor and we still
-        # have daily quota left. Note this is intentionally conservative
-        # — never opens on multiple pairs in the same tick.
-        await self._maybe_enter(sm)
-
-        # Pull the latest account/position/equity snapshot.
+        # Pull the latest account/position/equity snapshot first so the
+        # risk engine has a fresh equity reading before we decide whether
+        # to open. Order matters: account → risk.update → _maybe_enter.
         account = await self._adapter.get_account()
         positions = await self._adapter.get_positions()
+        self._risk.update(float(account.equity), len(positions))
+
+        # Mode-driven entry decision: pick the strongest report, open ONE
+        # trade if it clears the per-mode confidence floor, daily quota,
+        # and risk-engine guards. Conservative on purpose — at most one
+        # pair per tick.
+        await self._maybe_enter(sm)
 
         async with sm() as session:
             session.add(EquityPoint(

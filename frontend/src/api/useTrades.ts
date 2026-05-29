@@ -19,3 +19,25 @@ export function useTradeStats(days = 30) {
     queryFn: () => api.get<TradeStats>(`/api/trades/stats?days=${days}`),
   });
 }
+
+export interface ModeStats {
+  total: number;
+  wins: number;
+  win_rate: number;
+  pnl_total: number;
+}
+export interface StatsByMode {
+  days: number;
+  modes: {
+    proven: ModeStats;
+    autonomous: ModeStats;
+    manual: ModeStats;
+  };
+}
+
+export function useTradeStatsByMode(days = 30) {
+  return useQuery({
+    queryKey: ["trade-stats-by-mode", days],
+    queryFn: () => api.get<StatsByMode>(`/api/trades/stats-by-mode?days=${days}`),
+  });
+}

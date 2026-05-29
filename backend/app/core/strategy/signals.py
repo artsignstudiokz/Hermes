@@ -81,9 +81,14 @@ class TrendFollowingStrategy:
 
 
 class MeanReversionStrategy:
-    """Bollinger band touch + RSI extreme + low ADX (range).
+    """BB touch + RSI extreme + Stochastic-turn confirmation in low ADX.
 
-    Long when price ≤ BB lower AND RSI ≤ 30 AND ADX < 20.
+    Plain "fade the touch" lost catastrophically in the v1.0.21 backtest
+    (Sharpe −13). The issue: in synthetic / real noisy data the touch
+    keeps extending — you're catching falling knives. v1.0.22 adds a
+    stochastic-turn confirmation: only enter long when %K crosses above
+    %D (early exit-from-oversold signal), and mirror for short. This
+    cuts trade count drastically but improves expectancy.
     """
     name = "Mean Reversion"
 
@@ -97,29 +102,35 @@ class MeanReversionStrategy:
         range_bound = s.adx <= self.adx_max
         if not range_bound:
             return None
-        if s.close <= s.bb_lower and s.rsi <= self.rsi_oversold:
+        long_setup = s.close <= s.bb_lower and s.rsi <= self.rsi_oversold
+        short_setup = s.close >= s.bb_upper and s.rsi >= self.rsi_overbought
+        stoch_turning_up = s.stoch_k > s.stoch_d and s.stoch_k < 50
+        stoch_turning_down = s.stoch_k < s.stoch_d and s.stoch_k > 50
+        if long_setup and stoch_turning_up:
             return Signal(
                 strategy=self.name, symbol=s.symbol, direction="long",
                 confidence=min(1.0, (self.rsi_oversold - s.rsi + 10) / 30.0),
                 reason=(
-                    f"Цена {s.close:.4f} коснулась нижней BB {s.bb_lower:.4f}; "
-                    f"RSI {s.rsi:.1f} ≤ {self.rsi_oversold:.0f} (перепродан); "
-                    f"ADX {s.adx:.1f} < {self.adx_max:.0f} (рынок во флэте — возврат к среднему вероятен)."
+                    f"BB-нижняя {s.bb_lower:.4f} коснулась, RSI {s.rsi:.1f} перепродан, "
+                    f"Stochastic %K {s.stoch_k:.1f} развернулся вверх над %D {s.stoch_d:.1f} — "
+                    f"условия для возврата к среднему."
                 ),
                 indicators={"close": s.close, "bb_lower": s.bb_lower,
-                            "rsi": s.rsi, "adx": s.adx},
+                            "rsi": s.rsi, "adx": s.adx,
+                            "stoch_k": s.stoch_k, "stoch_d": s.stoch_d},
             )
-        if s.close >= s.bb_upper and s.rsi >= self.rsi_overbought:
+        if short_setup and stoch_turning_down:
             return Signal(
                 strategy=self.name, symbol=s.symbol, direction="short",
                 confidence=min(1.0, (s.rsi - self.rsi_overbought + 10) / 30.0),
                 reason=(
-                    f"Цена {s.close:.4f} коснулась верхней BB {s.bb_upper:.4f}; "
-                    f"RSI {s.rsi:.1f} ≥ {self.rsi_overbought:.0f} (перекуплен); "
-                    f"ADX {s.adx:.1f} < {self.adx_max:.0f} (флэт — ожидаем отскок вниз)."
+                    f"BB-верхняя {s.bb_upper:.4f} коснулась, RSI {s.rsi:.1f} перекуплен, "
+                    f"Stochastic %K {s.stoch_k:.1f} развернулся вниз под %D {s.stoch_d:.1f} — "
+                    f"условия для возврата к среднему."
                 ),
                 indicators={"close": s.close, "bb_upper": s.bb_upper,
-                            "rsi": s.rsi, "adx": s.adx},
+                            "rsi": s.rsi, "adx": s.adx,
+                            "stoch_k": s.stoch_k, "stoch_d": s.stoch_d},
             )
         return None
 
@@ -127,29 +138,42 @@ class MeanReversionStrategy:
 class BreakoutStrategy:
     """Donchian channel breakout confirmed by volatility expansion.
 
-    Long when close > previous Donchian high (20) AND ATR is rising.
+    A pure `close >= donchian_high` test almost never fires because
+    the high INCLUDES the current bar — so the breakout only counts
+    when the current candle prints the new high. Backtest of v1.0.21
+    showed exactly 0 trades on 8640 bars. v1.0.22 relaxes:
+      • require close to clear the channel by `min_margin` (0.05% of price)
+      • require ATR% above `atr_floor` so we don't fade dead markets
     """
     name = "Breakout"
 
+    def __init__(self, min_margin: float = 0.0005, atr_floor: float = 0.0008):
+        self.min_margin = min_margin
+        self.atr_floor = atr_floor
+
     def evaluate(self, s: IndicatorSnapshot) -> Signal | None:
-        if s.close >= s.donchian_high:
+        if s.atr_pct < self.atr_floor:
+            return None
+        high_threshold = s.donchian_high * (1 - self.min_margin)
+        low_threshold = s.donchian_low * (1 + self.min_margin)
+        if s.close >= high_threshold:
             return Signal(
                 strategy=self.name, symbol=s.symbol, direction="long",
-                confidence=min(1.0, s.atr_pct * 100),
+                confidence=min(1.0, s.atr_pct * 80),
                 reason=(
-                    f"Цена {s.close:.4f} ≥ 20-периодному Donchian-хаю {s.donchian_high:.4f} — "
-                    f"пробой вверх; ATR {s.atr:.4f} ({s.atr_pct * 100:.2f}%) подтверждает рост волатильности."
+                    f"Цена {s.close:.4f} пробила Donchian-хай {s.donchian_high:.4f}; "
+                    f"ATR {s.atr_pct * 100:.2f}% выше порога — пробой подтверждён."
                 ),
                 indicators={"close": s.close, "donchian_high": s.donchian_high,
                             "atr": s.atr, "atr_pct": s.atr_pct},
             )
-        if s.close <= s.donchian_low:
+        if s.close <= low_threshold:
             return Signal(
                 strategy=self.name, symbol=s.symbol, direction="short",
-                confidence=min(1.0, s.atr_pct * 100),
+                confidence=min(1.0, s.atr_pct * 80),
                 reason=(
-                    f"Цена {s.close:.4f} ≤ 20-периодному Donchian-лоу {s.donchian_low:.4f} — "
-                    f"пробой вниз; ATR {s.atr:.4f} ({s.atr_pct * 100:.2f}%) подтверждает движение."
+                    f"Цена {s.close:.4f} пробила Donchian-лоу {s.donchian_low:.4f}; "
+                    f"ATR {s.atr_pct * 100:.2f}% выше порога — пробой подтверждён."
                 ),
                 indicators={"close": s.close, "donchian_low": s.donchian_low,
                             "atr": s.atr, "atr_pct": s.atr_pct},
@@ -344,13 +368,20 @@ DEFAULT_STRATEGIES = {
 
 
 def build_ensemble(names: list[str], mode: str = "majority") -> StrategyEnsemble:
-    """Factory used by the runner — accepts a list of preset names."""
+    """Factory used by the runner — accepts a list of preset names.
+
+    Default of [trend, momentum] is the only pair we've actually validated
+    profitable on synthetic walk-forward (Sharpe > 1 vs MeanReversion's
+    -13 in v1.0.21). Operators can opt into MeanReversion / Breakout
+    explicitly via the Strategy config, but we don't bake them into the
+    autonomous-mode default until a per-pair calibration confirms they
+    add expectancy on the operator's actual broker feed.
+    """
     chosen = []
     for n in names:
         cls = DEFAULT_STRATEGIES.get(n)
         if cls:
             chosen.append(cls())
     if not chosen:
-        # default: trend + momentum confluence — solid baseline
-        chosen = [TrendFollowingStrategy(), MomentumStrategy()]
+        chosen = [TrendFollowingStrategy(adx_min=22), MomentumStrategy()]
     return StrategyEnsemble(chosen, mode=mode)

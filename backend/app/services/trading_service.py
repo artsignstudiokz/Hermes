@@ -52,6 +52,13 @@ class TradingService:
             "last_tick": None,
             "tick_count": 0,
             "last_error": None,
+            "risk": {
+                "tripped": False, "trip_reason": "", "trip_ts": None,
+                "session_start_equity": 0.0, "session_peak_equity": 0.0,
+                "last_equity": 0.0, "daily_pnl_pct": 0.0, "drawdown_pct": 0.0,
+                "open_positions": 0,
+                "limits": {"daily_loss_pct": 5.0, "drawdown_pct": 10.0, "max_open_positions": 5},
+            },
         }
         return {
             "broker_account_id": self._broker_account_id,
@@ -196,8 +203,11 @@ class TradingService:
         symbols = params.get("symbols") or [
             "EURUSD", "GBPUSD", "EURCHF", "EURJPY", "USDCHF", "USDJPY",
         ]
+        # Default ensemble — see v1.0.22 backtest in
+        # scripts/backtest_ensemble.py for the reasoning behind
+        # excluding MeanReversion/Breakout from the default.
         ensemble = build_ensemble(
-            params.get("ensemble") or ["trend", "mean_reversion", "breakout", "momentum"],
+            params.get("ensemble") or ["trend", "momentum"],
             mode=params.get("ensemble_mode") or "majority",
         )
         panel = IndicatorPanel()

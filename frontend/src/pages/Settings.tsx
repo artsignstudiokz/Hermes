@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { CheckCircle2, ExternalLink, Loader2, Moon, RefreshCw, Sun, Sunrise } from "lucide-react";
-import { useEffect } from "react";
+import { CheckCircle2, ExternalLink, GraduationCap, Loader2, Moon, RefreshCw, Sun, Sunrise } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { useCheckUpdate, useVersion } from "@/api/useSystem";
+import { resetTutorial, Tutorial } from "@/components/Tutorial/Tutorial";
 import { useTheme } from "@/theme/ThemeProvider";
 import { win } from "@/lib/webview";
 import { brand } from "@/theme/tokens";
@@ -11,12 +12,18 @@ export function Settings() {
   const version = useVersion();
   const update = useCheckUpdate();
   const { theme, setTheme } = useTheme();
+  const [tourOpen, setTourOpen] = useState(false);
 
   // Auto-check on first mount (one-shot, fire-and-forget).
   useEffect(() => {
     update.mutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleReplayTour = () => {
+    resetTutorial();
+    setTourOpen(true);
+  };
 
   const u = update.data;
 
@@ -65,6 +72,26 @@ export function Settings() {
             onSelect={setTheme}
             hint="Следует за ОС"
           />
+        </div>
+      </section>
+
+      {/* Tutorial replay */}
+      <section className="marble-card p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="display text-xl font-semibold">Знакомство с Гермесом</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Пройди вводный тур заново — Гермес расскажет как устроены два режима,
+              анализ и безопасность.
+            </p>
+          </div>
+          <button
+            onClick={handleReplayTour}
+            className="inline-flex items-center gap-2 rounded-xl border border-hermes-gold-deep/50 bg-hermes-gold/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wider text-hermes-gold-deep hover:bg-hermes-gold/20 transition"
+          >
+            <GraduationCap size={14} />
+            Перепройти тур
+          </button>
         </div>
       </section>
 
@@ -144,6 +171,7 @@ export function Settings() {
           <ExternalLink size={14} /> Открыть сайт BAI Core
         </button>
       </section>
+      <Tutorial open={tourOpen} onClose={() => setTourOpen(false)} />
     </motion.div>
   );
 }

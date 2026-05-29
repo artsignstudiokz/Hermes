@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.broker import TradeOut
@@ -81,3 +81,38 @@ async def stats(
         "pnl_total": float(pnl_sum),
         "commission_total": float(commission_sum),
     }
+
+
+@router.get("/stats-by-mode")
+async def stats_by_mode(
+    days: int = Query(default=30, ge=1, le=365),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Per-mode rollup so the Dashboard can show "Проверенный: +$120, 4
+    сделок" and "Автономный: -$30, 7 сделок" as separate cards."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    stmt = (
+        select(
+            TradeRow.mode,
+            func.count(TradeRow.id),
+            func.coalesce(func.sum(TradeRow.pnl), 0.0),
+            func.coalesce(
+                func.sum(case((TradeRow.pnl > 0, 1), else_=0)), 0,
+            ),
+        )
+        .where(TradeRow.opened_at >= since)
+        .group_by(TradeRow.mode)
+    )
+    rows = (await session.execute(stmt)).all()
+    by_mode: dict[str, dict] = {}
+    for mode, total, pnl_sum, wins in rows:
+        by_mode[mode] = {
+            "total": int(total),
+            "wins": int(wins),
+            "win_rate": (wins / total) if total else 0.0,
+            "pnl_total": float(pnl_sum),
+        }
+    # Ensure every known mode is present (frontend can render zero-state).
+    for m in ("proven", "autonomous", "manual"):
+        by_mode.setdefault(m, {"total": 0, "wins": 0, "win_rate": 0.0, "pnl_total": 0.0})
+    return {"days": days, "modes": by_mode}

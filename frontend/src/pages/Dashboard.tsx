@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { useAccount, useEquityHistory, useTradingStatus } from "@/api/useAccount";
 import { useBrokerHealth, useBrokers, useReconnectBroker } from "@/api/useBrokers";
 import { usePositions } from "@/api/usePositions";
-import { useTradeStats } from "@/api/useTrades";
+import { useTradeStats, useTradeStatsByMode } from "@/api/useTrades";
 import {
   useAnalyze,
   usePauseTrading,
@@ -37,6 +37,7 @@ export function Dashboard() {
   const account = useAccount();
   const positions = usePositions();
   const stats = useTradeStats(30);
+  const statsByMode = useTradeStatsByMode(30);
   const status = useTradingStatus();
   const brokers = useBrokers();
   const config = useStrategyConfig();
@@ -310,6 +311,28 @@ export function Dashboard() {
         />
       </section>
 
+      {/* Per-mode P&L breakdown — which scenario actually made money */}
+      <section className="grid gap-4 md:grid-cols-3">
+        <ModeStatsCard
+          icon={ShieldAlert}
+          tone="laurel"
+          label="Проверенный"
+          stats={statsByMode.data?.modes.proven}
+        />
+        <ModeStatsCard
+          icon={Brain}
+          tone="gold"
+          label="Автономный"
+          stats={statsByMode.data?.modes.autonomous}
+        />
+        <ModeStatsCard
+          icon={FlaskConical}
+          tone="muted"
+          label="Ручные"
+          stats={statsByMode.data?.modes.manual}
+        />
+      </section>
+
       {/* Risk + Per-pair regimes */}
       <section className="grid gap-6 lg:grid-cols-[1fr_2fr]">
         <RiskGauge drawdown={drawdown} stop={stopPct} hardStop={hardPct} />
@@ -403,4 +426,63 @@ export function Dashboard() {
       </section>
     </motion.div>
   );
+}
+
+
+// ── Per-mode rollup card ────────────────────────────────────────────
+
+
+function ModeStatsCard({
+  icon: Icon,
+  tone,
+  label,
+  stats,
+}: {
+  icon: typeof ShieldAlert;
+  tone: "laurel" | "gold" | "muted";
+  label: string;
+  stats: { total: number; wins: number; win_rate: number; pnl_total: number } | undefined;
+}) {
+  const total = stats?.total ?? 0;
+  const pnl = stats?.pnl_total ?? 0;
+  const winRate = stats?.win_rate ?? 0;
+  const positive = pnl >= 0;
+  const toneCls =
+    tone === "laurel"
+      ? "border-hermes-laurel/40 bg-hermes-laurel/10"
+      : tone === "gold"
+      ? "border-hermes-gold/40 bg-hermes-gold/10"
+      : "border-hermes-gold/25 bg-hermes-alabaster/60";
+  const iconColor =
+    tone === "laurel" ? "text-hermes-laurel" : tone === "gold" ? "text-hermes-gold-deep" : "text-muted-foreground";
+  return (
+    <div className={`marble-card relative overflow-hidden border ${toneCls} p-4`}>
+      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        <Icon size={13} className={iconColor} />
+        {label}
+      </div>
+      <div className="mt-2 flex items-baseline gap-3">
+        <span
+          className={`number text-2xl font-semibold ${
+            total === 0 ? "text-muted-foreground" : positive ? "text-hermes-laurel" : "text-hermes-wine"
+          }`}
+        >
+          {total === 0 ? "—" : formatMoney(pnl)}
+        </span>
+      </div>
+      <div className="mt-2 text-[11px] text-muted-foreground">
+        {total === 0
+          ? "пока нет сделок"
+          : `${total} ${pluralize(total, "сделка", "сделки", "сделок")} · win-rate ${formatPct(winRate)}`}
+      </div>
+    </div>
+  );
+}
+
+function pluralize(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }

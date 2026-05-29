@@ -3,7 +3,9 @@ import { ArrowDownRight, ArrowUpRight, X } from "lucide-react";
 import { useState } from "react";
 
 import { closePosition } from "@/api/usePositions";
+import { ApiError } from "@/lib/api";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { toast } from "@/lib/toast";
 import type { Position } from "@/api/types";
 
 interface Props {
@@ -31,10 +33,19 @@ export function PositionsTable({ positions, loading }: Props) {
     );
   }
 
-  const handleClose = async (ticket: string) => {
+  const handleClose = async (ticket: string, symbol: string) => {
+    // window.confirm is the lightest, most predictable confirmation
+    // path inside the PyWebView shell — no modal coordination, no
+    // accessibility surprises. The cost is the OS-native dialog,
+    // which is fine for an "are you sure" gate.
+    if (!window.confirm(`Закрыть позицию ${symbol} (тикет ${ticket})?`)) return;
     setClosing(ticket);
     try {
       await closePosition(ticket);
+      toast.success("Позиция закрыта", `${symbol} тикет ${ticket}`);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
+      toast.error("Не удалось закрыть", msg);
     } finally {
       setClosing(null);
     }
@@ -91,11 +102,11 @@ export function PositionsTable({ positions, loading }: Props) {
               </td>
               <td className="px-2 py-3">
                 <button
-                  onClick={() => handleClose(p.ticket)}
+                  onClick={() => handleClose(p.ticket, p.symbol)}
                   disabled={closing === p.ticket}
                   className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-hermes-wine/15 hover:text-hermes-wine disabled:opacity-50"
                   aria-label="Закрыть позицию"
-                  title="Закрыть"
+                  title={`Закрыть ${p.symbol}`}
                 >
                   <X size={14} />
                 </button>
