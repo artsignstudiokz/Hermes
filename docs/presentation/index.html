@@ -7,13 +7,15 @@
   <meta name="description" content="Hermes - десктопный торговый бот от BAI Core. Полная презентация функционала, архитектуры, безопасности и дорожной карты." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:        #F1E9D2;
-      --bg-soft:   #E8DEC0;
+      --bg:        #F4ECD3;
+      --bg-soft:   #EBE0BD;
+      --bg-deep:   #E1D4A8;
       --card:      #FFFCF1;
       --card-elev: #FFFFFA;
+      --card-glass:rgba(255,252,241,0.78);
       --ink:       #1A150F;
       --ink-2:     #4F4536;
       --ink-3:     #6E6450;
@@ -21,218 +23,463 @@
       --gold-1:    #F4D783;
       --gold-2:    #D4AF37;
       --gold-3:    #9B7B2D;
+      --gold-4:    #6E5418;
       --gold-line: rgba(155, 123, 45, 0.45);
-      --gold-hair: rgba(155, 123, 45, 0.20);
+      --gold-hair: rgba(155, 123, 45, 0.18);
+      --gold-glow: rgba(212, 175, 55, 0.35);
       --laurel:    #5B7A3E;
+      --laurel-d:  #3F5A26;
       --wine:      #8B2C2C;
+      --wine-d:    #5E1818;
       --aegean:    #234A6A;
+      --aegean-d:  #142D40;
+      --bronze:    #9B6B2B;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; scroll-padding-top: 80px; }
     body {
       background-color: var(--bg);
       background-image:
-        radial-gradient(ellipse at 0% 0%, rgba(212,175,55,0.14) 0%, transparent 50%),
-        radial-gradient(ellipse at 100% 100%, rgba(91,122,62,0.09) 0%, transparent 55%);
+        radial-gradient(circle at 0% 0%, rgba(212,175,55,0.22) 0%, transparent 38%),
+        radial-gradient(circle at 100% 12%, rgba(91,122,62,0.10) 0%, transparent 45%),
+        radial-gradient(circle at 50% 100%, rgba(155,123,45,0.18) 0%, transparent 55%);
       background-attachment: fixed;
       color: var(--ink);
       font-family: 'Inter', system-ui, sans-serif;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
-    .container { max-width: 1140px; margin: 0 auto; padding: 0 1.5rem; }
+    /* Decorative floating golden orbs (purely cosmetic, paint-only) */
+    body::before, body::after {
+      content: ""; position: fixed; z-index: 0;
+      pointer-events: none;
+      border-radius: 50%; filter: blur(80px);
+    }
+    body::before {
+      width: 520px; height: 520px;
+      top: -160px; left: -200px;
+      background: radial-gradient(circle, rgba(244,215,131,0.55) 0%, transparent 70%);
+    }
+    body::after {
+      width: 620px; height: 620px;
+      bottom: -240px; right: -240px;
+      background: radial-gradient(circle, rgba(155,123,45,0.32) 0%, transparent 70%);
+    }
+
+    .container { max-width: 1180px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1; }
     .display { font-family: 'Cormorant Garamond', Georgia, serif; }
     .mono    { font-family: 'JetBrains Mono', monospace; }
     .gold-text {
-      background: linear-gradient(135deg, var(--gold-1) 0%, var(--gold-2) 50%, var(--gold-3) 100%);
+      background: linear-gradient(120deg, #F4D783 0%, #D4AF37 35%, #9B7B2D 70%, #F4D783 100%);
+      background-size: 200% 100%;
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
+      animation: shimmer 8s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
     }
 
-    /* Sections */
-    section {
-      padding: 6rem 0 4rem;
-      position: relative;
+    /* ── Top navigation ───────────────────────────────────────── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      background: rgba(244,236,211,0.78);
+      border-bottom: 1px solid var(--gold-hair);
     }
-    section:nth-child(even) {
+    .nav-progress {
+      position: absolute; bottom: 0; left: 0; height: 2px;
+      background: linear-gradient(90deg, var(--gold-1), var(--gold-2), var(--gold-3));
+      width: 0%; transition: width 0.18s ease-out;
+      box-shadow: 0 0 12px var(--gold-glow);
+    }
+    .nav-row {
+      max-width: 1280px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.85rem 1.5rem;
+    }
+    .nav-brand { display: flex; align-items: center; gap: 0.65rem; }
+    .nav-mark {
+      width: 30px; height: 30px;
+      border-radius: 50%;
       background:
-        radial-gradient(circle at 50% 0%, rgba(255,252,241,0.6) 0%, transparent 60%);
+        radial-gradient(circle at 30% 25%, #FFEFC5 0%, #F4D783 25%, #D4AF37 60%, #7A5A1E 100%);
+      box-shadow:
+        inset 0 1px 2px rgba(255,255,255,0.6),
+        inset 0 -2px 3px rgba(60,44,18,0.45),
+        0 3px 10px rgba(155,123,45,0.45);
+      display: grid; place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      color: #5A3F12;
+      font-weight: 700;
+      font-size: 0.85rem;
     }
+    .nav-brand-text {
+      display: flex; flex-direction: column; line-height: 1;
+    }
+    .nav-brand-text .name {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700; font-size: 1.05rem;
+    }
+    .nav-brand-text .sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--ink-3);
+      margin-top: 2px;
+    }
+    .nav-links {
+      display: flex; gap: 0.25rem;
+      list-style: none;
+    }
+    .nav-links a {
+      display: inline-block;
+      padding: 0.4rem 0.85rem;
+      border-radius: 9999px;
+      color: var(--ink-2);
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover {
+      background: rgba(255,252,241,0.85);
+      color: var(--gold-4);
+    }
+    @media (max-width: 920px) {
+      .nav-links { display: none; }
+    }
+
+    /* ── Typography ───────────────────────────────────────────── */
     .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 0.32em;
-      color: var(--ink-3);
+      letter-spacing: 0.34em;
+      color: var(--gold-3);
       font-weight: 600;
+      display: inline-flex; align-items: center; gap: 0.6rem;
     }
-    h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
-    h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem, 3.5vw, 3rem); font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
-    h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 600; line-height: 1.2; }
-    h4 { font-family: 'Inter', sans-serif; font-size: 1rem; font-weight: 600; }
-    p  { color: var(--ink-2); font-size: 1.05rem; }
-    .lead { font-size: 1.2rem; color: var(--ink-2); }
+    .eyebrow::before {
+      content: ""; width: 24px; height: 1.5px;
+      background: linear-gradient(90deg, var(--gold-2), transparent);
+    }
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.8rem, 5.5vw, 5.2rem);
+      font-weight: 600; line-height: 1.05; letter-spacing: -0.025em;
+    }
+    h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 3.6vw, 3.2rem);
+      font-weight: 600; line-height: 1.12; letter-spacing: -0.015em;
+    }
+    h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.55rem; font-weight: 600; line-height: 1.2;
+    }
+    h4 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 600;
+    }
+    p { color: var(--ink-2); font-size: 1.02rem; }
+    .lead { font-size: 1.18rem; color: var(--ink-2); line-height: 1.55; }
 
-    /* Hero */
-    .hero {
-      min-height: 92vh;
-      display: flex; align-items: center;
-      padding-top: 8rem;
+    /* ── Sections ─────────────────────────────────────────────── */
+    section {
+      padding: 6.5rem 0 5rem;
+      position: relative;
     }
-    .hero-content { display: grid; gap: 2rem; }
+    section:nth-of-type(odd) {
+      background: radial-gradient(ellipse at 50% 0%, rgba(255,252,241,0.55) 0%, transparent 65%);
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 9rem 0 5rem;
+      position: relative;
+    }
+    .hero-mark-wrap {
+      display: grid; place-items: center;
+      margin-bottom: 2rem;
+    }
+    .hero-mark {
+      width: 88px; height: 88px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 28% 22%, #FFF3CB 0%, #F4D783 18%, #D4AF37 50%, #6E5418 100%);
+      box-shadow:
+        inset 0 2px 4px rgba(255,255,255,0.7),
+        inset 0 -3px 6px rgba(60,44,18,0.5),
+        0 18px 48px -10px rgba(155,123,45,0.65),
+        0 0 0 1px var(--gold-line);
+      display: grid; place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      color: #432F0A; font-weight: 700;
+      font-size: 2.3rem;
+      position: relative;
+    }
+    .hero-mark::after {
+      content: ""; position: absolute;
+      inset: -10px; border-radius: 50%;
+      border: 1px dashed rgba(155,123,45,0.35);
+      animation: spin 32s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .hero-tag {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      padding: 0.5rem 1rem;
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 1.05rem;
       border: 1px solid var(--gold-line);
       border-radius: 9999px;
       background: var(--card);
-      width: fit-content;
-      font-size: 0.8rem;
-      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; font-weight: 500;
+      color: var(--ink-2);
+      box-shadow: 0 6px 24px -10px rgba(155,123,45,0.4);
     }
     .hero-tag::before {
-      content: ""; width: 8px; height: 8px; border-radius: 50%;
-      background: var(--laurel); box-shadow: 0 0 0 3px rgba(91,122,62,0.2);
+      content: ""; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--laurel);
+      box-shadow: 0 0 0 3px rgba(91,122,62,0.22);
     }
-    .hero h1 { max-width: 900px; }
-    .hero .lead { max-width: 700px; }
-
+    .hero-content { display: grid; gap: 2.5rem; text-align: center; }
+    .hero h1 { max-width: 980px; margin: 0 auto; }
+    .hero .lead { max-width: 720px; margin: 0 auto; font-size: 1.22rem; }
     .hero-stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 1rem;
-      margin-top: 2rem;
+      max-width: 1080px; margin: 1.5rem auto 0;
     }
     .stat-card {
-      background: var(--card);
+      background: var(--card-glass);
+      backdrop-filter: blur(8px);
       border: 1px solid var(--gold-line);
       border-radius: 16px;
-      padding: 1.25rem 1.5rem;
+      padding: 1.25rem 1.1rem;
+      text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 22px 48px -22px rgba(155,123,45,0.55);
     }
     .stat-num {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--gold-3);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.6rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--gold-2) 0%, var(--gold-4) 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
       line-height: 1;
     }
     .stat-label {
-      margin-top: 0.5rem;
-      font-size: 0.78rem;
+      margin-top: 0.45rem;
+      font-size: 0.72rem;
       color: var(--ink-3);
       text-transform: uppercase;
       letter-spacing: 0.18em;
+      font-weight: 600;
     }
 
-    /* Cards grid */
+    .scroll-hint {
+      position: absolute; bottom: 2rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--ink-3);
+      animation: float 2.4s ease-in-out infinite;
+    }
+    .scroll-hint svg { stroke: var(--gold-3); }
+    @keyframes float {
+      0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.6; }
+      50% { transform: translateX(-50%) translateY(6px); opacity: 1; }
+    }
+
+    /* ── Cards grid ───────────────────────────────────────────── */
     .grid { display: grid; gap: 1.5rem; }
     .grid-2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
-    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
     .grid-4 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 
     .card {
       background: var(--card);
       border: 1px solid var(--gold-line);
-      border-radius: 18px;
-      padding: 1.75rem 1.75rem;
-      transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
-    }
-    .card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(155,123,45,0.65);
-      box-shadow: 0 22px 48px -18px rgba(155,123,45,0.5);
-    }
-    .card-icon {
-      width: 48px; height: 48px;
-      border-radius: 12px;
-      display: grid; place-items: center;
-      background: linear-gradient(135deg, rgba(244,215,131,0.4), rgba(155,123,45,0.15));
-      border: 1px solid var(--gold-line);
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-    }
-    .card h3 { margin-bottom: 0.5rem; }
-    .card p { font-size: 0.95rem; }
-
-    /* Two-column with mode cards */
-    .mode-card {
-      background: var(--card);
-      border-radius: 22px;
-      padding: 2.25rem;
+      border-radius: 20px;
+      padding: 1.85rem;
+      transition: all 0.3s cubic-bezier(0.2, 0.65, 0.3, 1);
       position: relative;
       overflow: hidden;
     }
-    .mode-card.proven {
-      border: 1.5px solid rgba(91,122,62,0.55);
-      background: linear-gradient(135deg, var(--card) 0%, rgba(91,122,62,0.06) 100%);
+    .card::before {
+      content: ""; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-2), transparent);
+      opacity: 0; transition: opacity 0.3s;
     }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(155,123,45,0.65);
+      box-shadow:
+        0 28px 64px -24px rgba(155,123,45,0.5),
+        0 0 0 1px var(--gold-line);
+    }
+    .card:hover::before { opacity: 1; }
+    .card-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(244,215,131,0.45), rgba(155,123,45,0.18));
+      border: 1px solid var(--gold-line);
+      font-size: 1.6rem;
+      margin-bottom: 1.1rem;
+    }
+    .card h3 { margin-bottom: 0.6rem; color: var(--ink); }
+    .card p { font-size: 0.95rem; }
+
+    /* ── Mode cards ───────────────────────────────────────────── */
+    .mode-card {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 2.4rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .mode-card:hover { transform: translateY(-4px); }
+    .mode-card::after {
+      content: ""; position: absolute;
+      top: 0; right: 0; width: 220px; height: 220px;
+      border-radius: 50%;
+      filter: blur(80px); opacity: 0.6;
+      pointer-events: none;
+    }
+    .mode-card.proven {
+      border: 1.5px solid rgba(91,122,62,0.5);
+      background: linear-gradient(135deg, var(--card) 0%, rgba(91,122,62,0.05) 100%);
+    }
+    .mode-card.proven::after { background: rgba(91,122,62,0.4); }
+    .mode-card.proven:hover { box-shadow: 0 30px 70px -28px rgba(91,122,62,0.55); }
     .mode-card.autonomous {
-      border: 1.5px solid rgba(155,123,45,0.65);
+      border: 1.5px solid var(--gold-line);
       background: linear-gradient(135deg, var(--card) 0%, rgba(212,175,55,0.08) 100%);
     }
+    .mode-card.autonomous::after { background: rgba(212,175,55,0.55); }
+    .mode-card.autonomous:hover { box-shadow: 0 30px 70px -28px rgba(155,123,45,0.55); }
     .mode-badge {
       display: inline-flex; align-items: center; gap: 0.5rem;
       padding: 0.4rem 0.85rem;
       border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      margin-bottom: 1rem;
+      margin-bottom: 1.2rem;
     }
-    .proven .mode-badge { background: rgba(91,122,62,0.15); color: var(--laurel); }
-    .autonomous .mode-badge { background: rgba(212,175,55,0.2); color: var(--gold-3); }
-    .mode-card h3 { font-size: 1.8rem; margin-bottom: 0.75rem; }
-    .mode-card ul { list-style: none; margin-top: 1.5rem; }
+    .proven .mode-badge {
+      background: rgba(91,122,62,0.15);
+      color: var(--laurel-d);
+      border: 1px solid rgba(91,122,62,0.4);
+    }
+    .autonomous .mode-badge {
+      background: rgba(212,175,55,0.18);
+      color: var(--gold-4);
+      border: 1px solid var(--gold-line);
+    }
+    .mode-card h3 {
+      font-size: 1.85rem; margin-bottom: 0.85rem;
+      position: relative; z-index: 1;
+    }
+    .mode-card p { position: relative; z-index: 1; }
+    .mode-card ul {
+      list-style: none; margin-top: 1.5rem;
+      position: relative; z-index: 1;
+    }
     .mode-card li {
-      padding: 0.6rem 0;
+      padding: 0.7rem 0;
       border-top: 1px solid var(--gold-hair);
       font-size: 0.95rem;
       color: var(--ink-2);
-      display: flex; gap: 0.75rem;
+      display: flex; gap: 0.85rem;
+      align-items: flex-start;
     }
     .mode-card li::before {
-      content: "•";
-      color: var(--gold-2);
-      font-weight: 700;
-      flex-shrink: 0;
+      content: ""; flex-shrink: 0;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      margin-top: 0.65rem;
+      background: var(--gold-2);
+      box-shadow: 0 0 0 3px rgba(212,175,55,0.18);
     }
 
-    /* Pipeline */
-    .pipeline {
+    /* ── Tick cycle (circular SVG) ─────────────────────────── */
+    .tick-wrap {
+      margin-top: 2.5rem;
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 0;
-      margin-top: 2rem;
-      position: relative;
+      grid-template-columns: minmax(340px, 460px) 1fr;
+      gap: 3rem;
+      align-items: center;
     }
-    .pipe-step {
+    @media (max-width: 900px) {
+      .tick-wrap { grid-template-columns: 1fr; }
+    }
+    .tick-svg { width: 100%; height: auto; max-width: 460px; }
+    .tick-steps {
+      list-style: none;
+      display: flex; flex-direction: column; gap: 0.85rem;
+    }
+    .tick-steps li {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 0.85rem;
+      padding: 0.85rem 1rem;
       background: var(--card);
-      border: 1px solid var(--gold-line);
-      padding: 1.5rem 1.25rem;
-      position: relative;
-      text-align: center;
+      border: 1px solid var(--gold-hair);
+      border-radius: 14px;
+      transition: all 0.25s;
     }
-    .pipe-step:first-child { border-radius: 16px 0 0 16px; }
-    .pipe-step:last-child  { border-radius: 0 16px 16px 0; }
-    .pipe-step + .pipe-step { border-left: none; }
-    .pipe-num {
+    .tick-steps li:hover {
+      border-color: var(--gold-line);
+      transform: translateX(4px);
+    }
+    .tick-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold-1), var(--gold-3));
+      color: #fff;
       font-family: 'Cormorant Garamond', serif;
-      font-size: 1.4rem;
       font-weight: 700;
-      color: var(--gold-2);
-      margin-bottom: 0.5rem;
+      display: grid; place-items: center;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 12px -4px rgba(155,123,45,0.5);
     }
-    .pipe-step h4 { margin-bottom: 0.25rem; }
-    .pipe-step p { font-size: 0.85rem; }
-    @media (max-width: 900px) { .pipeline { grid-template-columns: 1fr; } .pipe-step + .pipe-step { border-left: 1px solid var(--gold-line); border-top: none; } }
+    .tick-step-title {
+      font-weight: 600;
+      color: var(--ink);
+      font-size: 0.92rem;
+      margin-bottom: 0.15rem;
+    }
+    .tick-step-desc {
+      font-size: 0.82rem;
+      color: var(--ink-3);
+      line-height: 1.45;
+    }
 
-    /* Indicator chips */
-    .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; }
+    /* ── Indicator chips ───────────────────────────────────── */
+    .chip-grid {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
     .chip {
-      padding: 0.5rem 0.9rem;
+      padding: 0.5rem 0.95rem;
       border-radius: 9999px;
       background: var(--card);
       border: 1px solid var(--gold-line);
@@ -240,17 +487,157 @@
       font-size: 0.78rem;
       font-weight: 600;
       color: var(--ink-2);
+      transition: all 0.2s;
+    }
+    .chip:hover {
+      transform: translateY(-1px);
+      background: var(--card-elev);
+      border-color: var(--gold-2);
+      color: var(--gold-4);
     }
     .chip.accent {
-      background: linear-gradient(135deg, rgba(244,215,131,0.35), rgba(212,175,55,0.2));
+      background: linear-gradient(135deg, rgba(244,215,131,0.4), rgba(212,175,55,0.22));
       border-color: var(--gold-2);
-      color: var(--gold-3);
+      color: var(--gold-4);
     }
 
-    /* Tech stack */
+    /* Strategy info cards inside the indicator section */
+    .strat-list { display: grid; gap: 0.85rem; margin-top: 1rem; }
+    .strat-item {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 0.85rem;
+      padding: 1rem 1.15rem;
+      background: var(--card-glass);
+      border: 1px solid var(--gold-hair);
+      border-radius: 14px;
+    }
+    .strat-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 0.95rem;
+    }
+    .strat-dot.trend { background: rgba(91,122,62,0.2); color: var(--laurel-d); }
+    .strat-dot.mom   { background: rgba(212,175,55,0.25); color: var(--gold-4); }
+    .strat-dot.mr    { background: rgba(155,107,43,0.2); color: var(--bronze); }
+    .strat-dot.br    { background: rgba(139,44,44,0.18); color: var(--wine-d); }
+    .strat-name { font-weight: 600; color: var(--ink); font-size: 0.95rem; }
+    .strat-desc { font-size: 0.82rem; color: var(--ink-3); margin-top: 0.2rem; line-height: 1.4; }
+
+    /* ── Risk breakers (gauge cards) ───────────────────────── */
+    .breaker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2.5rem;
+    }
+    .breaker {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 2rem 1.8rem;
+      border: 1.5px solid var(--gold-line);
+      text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .breaker:hover { transform: translateY(-4px); box-shadow: 0 28px 64px -24px rgba(155,123,45,0.45); }
+    .breaker.laurel { border-color: rgba(91,122,62,0.5); }
+    .breaker.bronze { border-color: rgba(155,107,43,0.55); }
+    .breaker.wine   { border-color: rgba(139,44,44,0.5); }
+    .breaker-gauge {
+      width: 150px; height: 150px;
+      margin: 0 auto 1.25rem;
+      position: relative;
+    }
+    .breaker-val {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.15rem;
+    }
+    .breaker-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.8rem; font-weight: 700;
+      line-height: 1;
+    }
+    .breaker.laurel .breaker-num { color: var(--laurel-d); }
+    .breaker.bronze .breaker-num { color: var(--bronze); }
+    .breaker.wine   .breaker-num { color: var(--wine-d); }
+    .breaker-unit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .breaker h3 { font-size: 1.2rem; margin-bottom: 0.6rem; }
+    .breaker p { font-size: 0.88rem; color: var(--ink-3); line-height: 1.5; }
+
+    /* ── Architecture stack visual ────────────────────────── */
+    .arch-stack {
+      display: flex; flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 2.5rem;
+      perspective: 1200px;
+    }
+    .arch-layer {
+      display: grid;
+      grid-template-columns: 70px 1fr 200px;
+      gap: 1.5rem;
+      align-items: center;
+      padding: 1.4rem 1.8rem;
+      background: var(--card);
+      border: 1px solid var(--gold-line);
+      border-radius: 18px;
+      position: relative;
+      transition: all 0.3s;
+    }
+    .arch-layer:hover {
+      transform: translateY(-3px) rotateX(2deg);
+      box-shadow: 0 22px 48px -20px rgba(155,123,45,0.45);
+      border-color: var(--gold-2);
+    }
+    .arch-num {
+      width: 54px; height: 54px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--gold-1), var(--gold-3));
+      color: #fff;
+      display: grid; place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 700;
+      box-shadow: 0 8px 22px -8px rgba(155,123,45,0.55);
+    }
+    .arch-text h4 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem; font-weight: 600;
+      color: var(--ink); margin-bottom: 0.35rem;
+    }
+    .arch-text p {
+      font-size: 0.9rem; color: var(--ink-3);
+      line-height: 1.5;
+    }
+    .arch-tech {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--ink-4);
+      line-height: 1.6;
+      text-align: right;
+    }
+    @media (max-width: 720px) {
+      .arch-layer {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .arch-num { margin: 0 auto; }
+      .arch-tech { text-align: center; }
+    }
+
+    /* ── Tech stack ───────────────────────────────────────── */
     .tech-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 1rem;
       margin-top: 1.5rem;
     }
@@ -258,41 +645,90 @@
       background: var(--card);
       border: 1px solid var(--gold-line);
       border-radius: 12px;
-      padding: 1rem 1.25rem;
+      padding: 1.1rem 1.35rem;
+      transition: all 0.25s;
+    }
+    .tech-item:hover {
+      transform: translateY(-2px);
+      border-color: var(--gold-2);
+      box-shadow: 0 14px 32px -14px rgba(155,123,45,0.4);
     }
     .tech-item .label {
-      font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: var(--ink-3);
+      color: var(--gold-3);
+      font-weight: 600;
     }
     .tech-item .value {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin-top: 0.3rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-top: 0.35rem;
       color: var(--ink);
     }
 
-    /* Timeline */
+    /* ── Pipeline (5-step) ─────────────────────────────────── */
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      margin-top: 2.5rem;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 14px 38px -16px rgba(155,123,45,0.3);
+    }
+    .pipe-step {
+      background: var(--card);
+      border: 1px solid var(--gold-line);
+      padding: 1.6rem 1.25rem;
+      position: relative;
+      text-align: center;
+      transition: background 0.25s;
+    }
+    .pipe-step:not(:first-child) { border-left: none; }
+    .pipe-step:hover { background: var(--card-elev); }
+    .pipe-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold-4));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    .pipe-step h4 { margin-bottom: 0.35rem; font-size: 0.95rem; }
+    .pipe-step p { font-size: 0.82rem; color: var(--ink-3); }
+    @media (max-width: 900px) {
+      .pipeline { grid-template-columns: 1fr; }
+      .pipe-step:not(:first-child) {
+        border-left: 1px solid var(--gold-line);
+        border-top: none;
+      }
+    }
+
+    /* ── Timeline ─────────────────────────────────────────── */
+    .timeline-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      margin-top: 2.5rem;
+    }
+    @media (max-width: 800px) { .timeline-grid { grid-template-columns: 1fr; } }
     .timeline {
       position: relative;
       padding-left: 2rem;
-      margin-top: 2rem;
     }
     .timeline::before {
       content: ""; position: absolute;
       left: 0.55rem; top: 0; bottom: 0;
       width: 2px;
-      background: linear-gradient(180deg, var(--gold-2), var(--gold-3));
+      background: linear-gradient(180deg, var(--gold-2), var(--gold-3), var(--gold-4));
     }
-    .tl-item {
-      position: relative;
-      padding-bottom: 2rem;
-    }
+    .tl-item { position: relative; padding-bottom: 1.5rem; }
     .tl-item::before {
       content: ""; position: absolute;
-      left: -2rem; top: 0.5rem;
+      left: -2rem; top: 0.4rem;
       width: 14px; height: 14px;
       border-radius: 50%;
       background: var(--card);
@@ -300,189 +736,238 @@
     }
     .tl-item.done::before {
       background: var(--gold-2);
-      box-shadow: 0 0 0 4px rgba(212,175,55,0.2);
+      box-shadow: 0 0 0 4px rgba(212,175,55,0.22);
     }
-    .tl-item.next::before {
-      border-color: var(--ink-4);
-    }
+    .tl-item.next::before { border-color: var(--ink-4); }
     .tl-version {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      letter-spacing: 0.12em;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
       color: var(--gold-3);
       font-weight: 700;
     }
-    .tl-title { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 600; margin-top: 0.15rem; }
-    .tl-desc { color: var(--ink-3); font-size: 0.92rem; margin-top: 0.25rem; }
-
-    /* Meander divider */
-    .meander {
-      height: 22px;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='20' viewBox='0 0 56 20' fill='none'><g stroke='%239B7B2D' stroke-width='1.1' opacity='0.7'><path d='M0 16 L0 4 L12 4 L12 12 L4 12 L4 8 L8 8 L8 14 L0 14'/><path d='M14 4 L14 16 L26 16 L26 8 L18 8 L18 12 L22 12 L22 6 L14 6'/><path d='M28 16 L28 4 L40 4 L40 12 L32 12 L32 8 L36 8 L36 14 L28 14'/><path d='M42 4 L42 16 L54 16 L54 8 L46 8 L46 12 L50 12 L50 6 L42 6'/></g></svg>");
-      background-repeat: repeat-x;
-      background-position: center;
+    .tl-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-top: 0.15rem;
+    }
+    .tl-desc {
+      color: var(--ink-3);
+      font-size: 0.88rem;
+      margin-top: 0.35rem;
+      line-height: 1.5;
     }
 
-    /* Quote */
+    /* ── Quote / pull ──────────────────────────────────────── */
     .quote {
       font-family: 'Cormorant Garamond', serif;
       font-style: italic;
-      font-size: 1.5rem;
-      color: var(--gold-3);
+      font-size: 1.6rem;
+      color: var(--gold-4);
+      line-height: 1.4;
+      max-width: 760px;
+      margin: 2.5rem 0;
+      padding: 1rem 1.5rem 1rem 1.85rem;
       border-left: 3px solid var(--gold-2);
-      padding-left: 1.5rem;
-      max-width: 720px;
-      margin: 2rem 0;
+      background: linear-gradient(90deg, rgba(244,215,131,0.18), transparent);
     }
 
-    /* Footer */
+    /* ── Footer ────────────────────────────────────────────── */
     footer {
-      padding: 3rem 0;
+      padding: 4rem 0 2.5rem;
       border-top: 1px solid var(--gold-hair);
-      background: linear-gradient(180deg, transparent, rgba(232,222,192,0.5));
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(232,222,192,0.6) 100%),
+        radial-gradient(circle at 50% 0%, rgba(244,215,131,0.18) 0%, transparent 60%);
       text-align: center;
       color: var(--ink-3);
+      position: relative; z-index: 1;
     }
-    footer a { color: var(--gold-3); text-decoration: none; font-weight: 600; }
-    footer a:hover { text-decoration: underline; }
-
-    .badge-row {
+    footer a {
+      color: var(--gold-3);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    footer a:hover { color: var(--gold-4); }
+    .footer-mark {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 25%, #FFEFC5 0%, #F4D783 25%, #D4AF37 60%, #7A5A1E 100%);
+      box-shadow:
+        inset 0 1px 2px rgba(255,255,255,0.6),
+        inset 0 -2px 3px rgba(60,44,18,0.45),
+        0 8px 24px -6px rgba(155,123,45,0.5);
+      display: grid; place-items: center;
+      font-family: 'Cormorant Garamond', serif;
+      color: #5A3F12; font-weight: 700; font-size: 1.4rem;
+      margin: 0 auto 1.5rem;
+    }
+    .badges {
       display: flex; flex-wrap: wrap; gap: 0.5rem;
-      margin-top: 1rem;
+      justify-content: center;
+      margin-top: 1.25rem;
     }
     .badge {
-      padding: 0.35rem 0.8rem;
+      padding: 0.4rem 0.9rem;
       border-radius: 9999px;
-      font-size: 0.72rem;
-      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; font-weight: 600;
       letter-spacing: 0.04em;
     }
-    .badge.green  { background: rgba(91,122,62,0.18); color: var(--laurel); border: 1px solid rgba(91,122,62,0.4); }
-    .badge.gold   { background: rgba(212,175,55,0.18); color: var(--gold-3); border: 1px solid rgba(155,123,45,0.45); }
-    .badge.blue   { background: rgba(35,74,106,0.15); color: var(--aegean); border: 1px solid rgba(35,74,106,0.4); }
+    .badge.green { background: rgba(91,122,62,0.18); color: var(--laurel-d); border: 1px solid rgba(91,122,62,0.4); }
+    .badge.gold  { background: rgba(212,175,55,0.18); color: var(--gold-4); border: 1px solid var(--gold-line); }
+    .badge.blue  { background: rgba(35,74,106,0.15); color: var(--aegean-d); border: 1px solid rgba(35,74,106,0.4); }
 
-    /* Architecture diagram */
-    .arch {
-      background: var(--card);
-      border: 1px solid var(--gold-line);
-      border-radius: 18px;
-      padding: 2rem;
-      margin-top: 1.5rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      line-height: 1.4;
-      color: var(--ink-2);
-      overflow-x: auto;
+    /* ── Reveal-on-scroll ──────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s cubic-bezier(0.2, 0.65, 0.3, 1),
+                  transform 0.7s cubic-bezier(0.2, 0.65, 0.3, 1);
     }
-    .arch .layer {
-      padding: 1rem 1.25rem;
-      border: 1px dashed var(--gold-line);
-      border-radius: 10px;
-      margin-bottom: 0.75rem;
-      background: rgba(255,252,241,0.7);
+    .reveal.in {
+      opacity: 1;
+      transform: translateY(0);
     }
-    .arch .layer strong { color: var(--gold-3); font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.88rem; letter-spacing: 0.05em; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; }
+      .gold-text { animation: none; }
+      .hero-mark::after { animation: none; }
+      .scroll-hint { animation: none; }
+    }
 
-    /* Print - tuned for Chrome --print-to-pdf landscape A4. Each
-       <section> becomes one slide via forced page-break. Backgrounds
-       and gold accents are preserved with -webkit-print-color-adjust. */
-    @page {
-      size: A4 landscape;
-      margin: 12mm 14mm;
-    }
+    /* ── Print rules (Chrome --print-to-pdf landscape A4) ─── */
+    @page { size: A4 landscape; margin: 12mm 14mm; }
     @media print {
       html, body {
         background: var(--bg) !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-        color-adjust: exact !important;
       }
-      body {
-        background-image:
-          radial-gradient(ellipse at 0% 0%, rgba(212,175,55,0.14) 0%, transparent 50%),
-          radial-gradient(ellipse at 100% 100%, rgba(91,122,62,0.09) 0%, transparent 55%) !important;
-      }
+      body::before, body::after { display: none; }
+      .nav, .scroll-hint { display: none !important; }
       .container { max-width: 100%; padding: 0; }
       section {
         padding: 0 !important;
         margin: 0 !important;
         page-break-before: always;
-        page-break-after: avoid;
         page-break-inside: avoid;
-        break-inside: avoid;
         min-height: 0 !important;
         display: block !important;
       }
       section:first-of-type { page-break-before: avoid; }
-      .hero { min-height: 0 !important; padding-top: 0 !important; }
-      h1 { font-size: 3rem !important; }
-      h2 { font-size: 2.1rem !important; margin-top: 0 !important; }
-      h3 { font-size: 1.2rem !important; }
+      .hero { min-height: 0 !important; padding: 0 !important; }
+      h1 { font-size: 3.2rem !important; }
+      h2 { font-size: 2.2rem !important; margin-top: 0 !important; }
+      h3 { font-size: 1.18rem !important; }
       .lead { font-size: 1rem !important; }
-      p, .card p, .mode-card li, .stat-label, .tl-desc {
-        font-size: 0.82rem !important;
-        line-height: 1.45 !important;
-      }
-      .stat-num { font-size: 1.6rem !important; }
-      .stat-card, .card, .tech-item { padding: 0.85rem 1rem !important; border-radius: 10px !important; }
-      .mode-card { padding: 1.3rem !important; border-radius: 14px !important; }
+      p { font-size: 0.85rem !important; line-height: 1.5 !important; }
+      .stat-num { font-size: 1.75rem !important; }
+      .stat-card, .card, .tech-item { padding: 0.9rem 1.05rem !important; border-radius: 10px !important; }
+      .mode-card { padding: 1.4rem !important; border-radius: 14px !important; }
       .grid { gap: 0.7rem !important; }
-      .hero-stats { gap: 0.6rem !important; margin-top: 1.1rem !important; }
-      .card:hover { transform: none; box-shadow: none; border-color: var(--gold-line); }
-      .meander { display: none; }
-      footer { page-break-before: always; padding: 2rem 0 !important; }
-      .card-icon { width: 36px; height: 36px; font-size: 1.1rem; margin-bottom: 0.5rem; }
-      .pipe-step { padding: 0.85rem 0.7rem !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+      .breaker { padding: 1.2rem !important; }
+      .breaker-gauge { width: 110px; height: 110px; margin-bottom: 0.7rem; }
+      .breaker-num { font-size: 2rem !important; }
+      .arch-layer { padding: 0.9rem 1.2rem !important; }
+      .arch-num { width: 42px; height: 42px; font-size: 1.2rem; }
+      .pipe-step { padding: 0.85rem 0.75rem !important; }
       .pipe-num { font-size: 1.1rem !important; }
-      .pipe-step h4 { font-size: 0.85rem !important; }
-      .pipe-step p { font-size: 0.72rem !important; line-height: 1.35 !important; }
-      .arch { padding: 1rem !important; font-size: 0.7rem !important; }
-      .arch .layer { padding: 0.6rem 0.8rem !important; margin-bottom: 0.45rem !important; }
-      .quote { font-size: 1.1rem !important; margin: 1rem 0 !important; }
-      .timeline { margin-top: 1rem !important; }
-      .tl-item { padding-bottom: 0.9rem !important; }
+      .tick-wrap {
+        grid-template-columns: 280px 1fr !important;
+        gap: 1.5rem !important;
+        margin-top: 1.5rem !important;
+      }
+      .tick-svg { max-width: 280px !important; }
+      .tick-steps { gap: 0.45rem !important; }
+      .tick-steps li { padding: 0.45rem 0.75rem !important; }
+      .tick-step-title { font-size: 0.8rem !important; }
+      .tick-step-desc { font-size: 0.7rem !important; line-height: 1.35 !important; }
+      .tick-num { width: 22px; height: 22px; font-size: 0.75rem; }
+      .timeline-grid { gap: 1.2rem !important; }
+      .tl-item { padding-bottom: 0.85rem !important; }
       .tl-title { font-size: 1rem !important; }
-      .chips { gap: 0.3rem !important; margin-top: 0.8rem !important; }
-      .chip { padding: 0.3rem 0.65rem !important; font-size: 0.68rem !important; }
+      .tl-desc { font-size: 0.78rem !important; }
+      .quote { font-size: 1.15rem !important; margin: 1rem 0 !important; padding: 0.6rem 1rem 0.6rem 1.4rem !important; }
+      footer { page-break-before: always; padding: 2rem 0 !important; }
+      .footer-mark { width: 42px; height: 42px; font-size: 1rem; margin-bottom: 0.9rem; }
     }
   </style>
 </head>
 <body>
 
+  <!-- ── Top navigation ───────────────────────────────────────── -->
+  <nav class="nav">
+    <div class="nav-row">
+      <div class="nav-brand">
+        <span class="nav-mark">Ἑ</span>
+        <div class="nav-brand-text">
+          <span class="name">Hermes</span>
+          <span class="sub">BAI Core · v1.0.40</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li><a href="#what">Что это</a></li>
+        <li><a href="#modes">Режимы</a></li>
+        <li><a href="#tick">Tick</a></li>
+        <li><a href="#strategies">Стратегии</a></li>
+        <li><a href="#risk">Защита</a></li>
+        <li><a href="#arch">Архитектура</a></li>
+        <li><a href="#stack">Стек</a></li>
+        <li><a href="#install">Установка</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+      </ul>
+    </div>
+    <div class="nav-progress" id="nav-progress"></div>
+  </nav>
+
   <!-- ── HERO ─────────────────────────────────────────────────── -->
   <section class="hero">
     <div class="container hero-content">
-      <span class="hero-tag">v1.0.40 · Production-ready · Build 41</span>
-      <h1>
+      <div class="hero-mark-wrap reveal">
+        <div class="hero-mark">Ἑ</div>
+      </div>
+      <div class="reveal" style="display:flex; justify-content:center;">
+        <span class="hero-tag">v1.0.40 · Production-ready · Build 41</span>
+      </div>
+      <h1 class="reveal">
         <span class="gold-text">Hermes</span> Trading Bot
-        <br />Десктопный торговый бот от BAI Core
+        <br />Десктопный торговый бот от <span class="gold-text">BAI Core</span>
       </h1>
-      <p class="lead">
+      <p class="lead reveal">
         Полностью автономный торговый ассистент для MetaTrader 5 и криптобирж.
         Объясняет каждое решение, защищает от слива, обновляется без переустановки.
         Работает локально - данные никогда не покидают компьютер оператора.
       </p>
 
-      <div class="hero-stats">
+      <div class="hero-stats reveal">
         <div class="stat-card"><div class="stat-num">76</div><div class="stat-label">тестов в CI</div></div>
-        <div class="stat-card"><div class="stat-num">19</div><div class="stat-label">технических индикаторов</div></div>
-        <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">торговые стратегии</div></div>
-        <div class="stat-card"><div class="stat-num">2</div><div class="stat-label">режима торговли</div></div>
-        <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">слоя защиты от слива</div></div>
-        <div class="stat-card"><div class="stat-num">82%</div><div class="stat-label">меньше сетевых запросов</div></div>
+        <div class="stat-card"><div class="stat-num">19</div><div class="stat-label">индикаторов</div></div>
+        <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">стратегии</div></div>
+        <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">contour защиты</div></div>
+        <div class="stat-card"><div class="stat-num">11</div><div class="stat-label">экранов UI</div></div>
+        <div class="stat-card"><div class="stat-num">40+</div><div class="stat-label">релизов</div></div>
       </div>
+    </div>
+    <div class="scroll-hint">
+      <span>Прокрутить</span>
+      <svg width="14" height="20" viewBox="0 0 14 20" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 1 L7 17 M1 11 L7 17 L13 11" />
+      </svg>
     </div>
   </section>
 
-  <div class="meander"></div>
-
   <!-- ── ЧТО ЭТО ──────────────────────────────────────────────── -->
-  <section>
+  <section id="what">
     <div class="container">
-      <span class="eyebrow">Что такое Hermes</span>
-      <h2 class="display" style="margin-top:0.75rem">Самостоятельный <span class="gold-text">исполнитель</span> сделок</h2>
-      <p class="lead" style="margin-top:1.5rem; max-width:820px">
+      <span class="eyebrow reveal">Что такое Hermes</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Самостоятельный <span class="gold-text">исполнитель</span> сделок</h2>
+      <p class="lead reveal" style="margin-top:1.5rem; max-width:840px">
         Hermes - это десктопное приложение под Windows. Устанавливается двойным кликом,
         запускается из меню Пуск, работает в фоне. Подключается к торговому счёту оператора
         (MetaTrader 5, в работе - Binance/Bybit/OKX), сам открывает и закрывает сделки,
@@ -490,17 +975,17 @@
       </p>
 
       <div class="grid grid-3" style="margin-top:3rem">
-        <div class="card">
+        <div class="card reveal">
           <div class="card-icon">🔐</div>
           <h3>100% локально</h3>
           <p>Vault с ключами зашифрован Argon2id + Fernet. БД, логи, история - всё в <span class="mono" style="font-size:0.85em">%APPDATA%\BAI Core\Hermes\</span>. Никаких облаков, никакой телеметрии без согласия.</p>
         </div>
-        <div class="card">
+        <div class="card reveal">
           <div class="card-icon">🧠</div>
           <h3>Объясняет каждое действие</h3>
           <p>Перед каждой сделкой формируется markdown-отчёт: какие индикаторы согласились, какая стратегия сработала, уверенность. Никаких «чёрных ящиков».</p>
         </div>
-        <div class="card">
+        <div class="card reveal">
           <div class="card-icon">🛡</div>
           <h3>Защита превыше прибыли</h3>
           <p>Три независимых circuit breaker'а. Watchdog следит за брокером. Кнопка аварийной остановки. Бот не сможет слить депозит за один плохой день.</p>
@@ -509,32 +994,30 @@
     </div>
   </section>
 
-  <div class="meander"></div>
-
   <!-- ── ДВА РЕЖИМА ───────────────────────────────────────────── -->
-  <section>
+  <section id="modes">
     <div class="container">
-      <span class="eyebrow">Два режима торговли</span>
-      <h2 class="display" style="margin-top:0.75rem">Оператор выбирает <span class="gold-text">сценарий</span></h2>
-      <p style="margin-top:1rem; max-width:720px">
+      <span class="eyebrow reveal">Режимы торговли</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Оператор выбирает <span class="gold-text">сценарий</span></h2>
+      <p class="reveal" style="margin-top:1rem; max-width:720px">
         Два режима взаимоисключающие. Включается один из них или ни один (наблюдение).
         Лимит: 1-3 сделки в сутки, независимо от режима.
       </p>
 
-      <div class="grid grid-2" style="margin-top:3rem">
-        <div class="mode-card proven">
+      <div class="grid grid-2" style="margin-top:2.5rem">
+        <div class="mode-card proven reveal">
           <span class="mode-badge">🛡 Проверенный сценарий</span>
           <h3>Одна откалиброванная стратегия</h3>
           <p>Только Trend Following с подтверждением ADX. Работает строго по 3-5 выбранным парам. Открывает только при уверенности ≥ 0.7. Это «торговать только то, что показало себя на истории».</p>
           <ul>
-            <li>Одна стратегия - Trend Following + ADX</li>
+            <li>Одна стратегия - Trend Following + ADX-фильтр</li>
             <li>3-5 настроенных пар, остальные игнорирует</li>
             <li>Порог уверенности 0.7</li>
             <li>Откалибровано через walk-forward backtest</li>
           </ul>
         </div>
 
-        <div class="mode-card autonomous">
+        <div class="mode-card autonomous reveal">
           <span class="mode-badge">🧠 Автономный режим</span>
           <h3>Развязанные руки</h3>
           <p>Все 4 стратегии в ансамбле с голосованием большинством. Сканирует все настроенные пары, выбирает одну с самым сильным сигналом - открывает там. Порог уверенности 0.5.</p>
@@ -547,493 +1030,618 @@
         </div>
       </div>
 
-      <div class="quote">
+      <div class="quote reveal">
         Бот никогда не открывает позиции на нескольких парах одновременно.
         За один тик - максимум одна сделка на лучшем сигнале.
       </div>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── DECISION PIPELINE ───────────────────────────────────── -->
-  <section>
+  <!-- ── ОДИН ТИК ────────────────────────────────────────────── -->
+  <section id="tick">
     <div class="container">
-      <span class="eyebrow">Как принимается решение</span>
-      <h2 class="display" style="margin-top:0.75rem">Каждый тик - <span class="gold-text">пять шагов</span></h2>
-      <p style="margin-top:1rem">Tick запускается каждые 60 секунд. Если что-то в pipeline блокирует - бот пишет почему.</p>
+      <span class="eyebrow reveal">Один tick = одна минута</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Что бот делает <span class="gold-text">каждые 60 секунд</span></h2>
+      <p class="reveal" style="margin-top:1rem; max-width:720px">
+        Цикл работы. Прерывается только командой оператора или Risk Engine'ом.
+        Один tick - один цикл всех шагов.
+      </p>
 
-      <div class="pipeline">
-        <div class="pipe-step">
-          <div class="pipe-num">1</div>
-          <h4>Watchdog</h4>
-          <p>Проверка соединения с брокером. 3 фейла → пауза + Telegram alert.</p>
-        </div>
-        <div class="pipe-step">
-          <div class="pipe-num">2</div>
-          <h4>Analysis</h4>
-          <p>OHLCV → 19 индикаторов на каждом символе. Кэшируется per-bar.</p>
-        </div>
-        <div class="pipe-step">
-          <div class="pipe-num">3</div>
-          <h4>Ensemble</h4>
-          <p>Выбранные стратегии голосуют. Берётся пара с максимальной уверенностью.</p>
-        </div>
-        <div class="pipe-step">
-          <div class="pipe-num">4</div>
-          <h4>Risk Gate</h4>
-          <p>Daily loss / drawdown / max positions. Если tripped - отказ.</p>
-        </div>
-        <div class="pipe-step">
-          <div class="pipe-num">5</div>
-          <h4>Execute</h4>
-          <p>place_order с SL/TP. TradeRow сохранён, Telegram пуш отправлен.</p>
-        </div>
+      <div class="tick-wrap">
+        <svg class="tick-svg reveal" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%"   stop-color="#F4D783"/>
+              <stop offset="50%"  stop-color="#D4AF37"/>
+              <stop offset="100%" stop-color="#6E5418"/>
+            </linearGradient>
+            <radialGradient id="center-grad" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0%" stop-color="#FFF3CB"/>
+              <stop offset="60%" stop-color="#F4D783"/>
+              <stop offset="100%" stop-color="#9B7B2D"/>
+            </radialGradient>
+          </defs>
+          <!-- Outer ring -->
+          <circle cx="180" cy="180" r="160" fill="none"
+                  stroke="rgba(155,123,45,0.18)" stroke-width="1"/>
+          <circle cx="180" cy="180" r="140" fill="none"
+                  stroke="url(#ring-grad)" stroke-width="2.5"
+                  stroke-dasharray="4 6" opacity="0.7"/>
+          <!-- Inner ring -->
+          <circle cx="180" cy="180" r="92" fill="url(#center-grad)" opacity="0.92"/>
+          <circle cx="180" cy="180" r="92" fill="none"
+                  stroke="#9B7B2D" stroke-width="1.5" opacity="0.4"/>
+          <!-- Center label -->
+          <text x="180" y="172" text-anchor="middle"
+                font-family="Cormorant Garamond, serif"
+                font-size="24" font-weight="700"
+                fill="#5A3F12">tick</text>
+          <text x="180" y="200" text-anchor="middle"
+                font-family="JetBrains Mono, monospace"
+                font-size="11" fill="#7A5A1E"
+                letter-spacing="2">60 сек</text>
+
+          <!-- 5 step nodes (positioned around circle) -->
+          <g font-family="Cormorant Garamond, serif" font-size="18" font-weight="700" fill="#fff">
+            <!-- 1: top -->
+            <circle cx="180" cy="40" r="22" fill="#9B7B2D"/>
+            <text x="180" y="46" text-anchor="middle">1</text>
+
+            <!-- 2: upper right -->
+            <circle cx="313" cy="138" r="22" fill="#9B7B2D"/>
+            <text x="313" y="144" text-anchor="middle">2</text>
+
+            <!-- 3: lower right -->
+            <circle cx="262" cy="295" r="22" fill="#9B7B2D"/>
+            <text x="262" y="301" text-anchor="middle">3</text>
+
+            <!-- 4: lower left -->
+            <circle cx="98" cy="295" r="22" fill="#9B7B2D"/>
+            <text x="98" y="301" text-anchor="middle">4</text>
+
+            <!-- 5: upper left -->
+            <circle cx="47" cy="138" r="22" fill="#9B7B2D"/>
+            <text x="47" y="144" text-anchor="middle">5</text>
+          </g>
+        </svg>
+
+        <ol class="tick-steps">
+          <li class="reveal">
+            <span class="tick-num">1</span>
+            <div>
+              <div class="tick-step-title">Сбор данных</div>
+              <div class="tick-step-desc">MT5 watchdog (3 фейла = пауза). OHLCV для каждой пары - 300 свечей. Текущие цены и спред.</div>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="tick-num">2</span>
+            <div>
+              <div class="tick-step-title">Indicator panel</div>
+              <div class="tick-step-desc">19 индикаторов на каждой паре: RSI, MACD, BB, ATR, EMA 50/200, ADX, ±DI, Stochastic, Donchian, ROC.</div>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="tick-num">3</span>
+            <div>
+              <div class="tick-step-title">Strategy ensemble</div>
+              <div class="tick-step-desc">4 стратегии формируют сигналы Long/Short/Flat. Голосование majority → одно решение по символу с обоснованием.</div>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="tick-num">4</span>
+            <div>
+              <div class="tick-step-title">Risk engine</div>
+              <div class="tick-step-desc">Daily loss &lt; 5%, drawdown &lt; 10%, позиций ≤ 5. Если нарушено - вход запрещён, бот наблюдает.</div>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="tick-num">5</span>
+            <div>
+              <div class="tick-step-title">Order + broadcast</div>
+              <div class="tick-step-desc">Лот = 0.5% эквити (снап под volume_step). SL/TP на сервер брокера. WebSocket рассылает обновление UI.</div>
+            </div>
+          </li>
+        </ol>
       </div>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── INDICATORS + STRATEGIES ─────────────────────────────── -->
-  <section>
+  <!-- ── ИНДИКАТОРЫ + СТРАТЕГИИ ──────────────────────────────── -->
+  <section id="strategies">
     <div class="container">
-      <span class="eyebrow">Индикаторы и стратегии</span>
-      <h2 class="display" style="margin-top:0.75rem">19 индикаторов · 4 стратегии · <span class="gold-text">безграничные комбинации</span></h2>
+      <span class="eyebrow reveal">Аналитический движок</span>
+      <h2 class="reveal" style="margin-top:0.75rem">19 индикаторов · 4 стратегии · <span class="gold-text">безграничные комбинации</span></h2>
 
-      <div class="grid grid-2" style="margin-top:2.5rem; align-items:start">
-        <div class="card">
+      <div class="grid grid-2" style="margin-top:2.5rem">
+        <div class="card reveal">
           <div class="card-icon">📊</div>
           <h3>Технические индикаторы</h3>
-          <p>Считаются за один проход на каждом тике, на каждом символе. Кэшируются в IndicatorPanel.</p>
-          <div class="chips">
+          <p>Считаются по 300 свечам на каждой паре каждый тик. IndicatorPanel - чистая функция, легко покрывается тестами и не привязана к брокеру.</p>
+          <div class="chip-grid">
             <span class="chip accent">RSI (Wilder)</span>
-            <span class="chip accent">MACD 12/26/9</span>
-            <span class="chip accent">Bollinger 20/2σ</span>
-            <span class="chip accent">ATR (14)</span>
-            <span class="chip accent">EMA 50/200</span>
-            <span class="chip accent">ADX + ±DI</span>
-            <span class="chip accent">Stochastic 14/3</span>
-            <span class="chip accent">Donchian (20)</span>
+            <span class="chip accent">MACD line/signal/hist</span>
+            <span class="chip accent">BB upper/middle/lower</span>
+            <span class="chip accent">ATR + ATR%</span>
+            <span class="chip">EMA 50</span>
+            <span class="chip">EMA 200</span>
+            <span class="chip">ADX</span>
+            <span class="chip">+DI / -DI</span>
+            <span class="chip">Stochastic %K / %D</span>
+            <span class="chip">Donchian high/low</span>
+            <span class="chip">ROC</span>
             <span class="chip">trend consensus</span>
-            <span class="chip">atr_pct (scale-free)</span>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-icon">⚙</div>
+        <div class="card reveal">
+          <div class="card-icon">⚔️</div>
           <h3>Торговые стратегии</h3>
-          <p>Каждая выдаёт сигнал с уверенностью 0-1 и русским объяснением. Ensemble комбинирует через голосование.</p>
-          <ul style="list-style:none; margin-top:1rem">
-            <li style="padding:0.6rem 0; border-top:1px solid var(--gold-hair)">
-              <strong>Trend Following</strong><br />
-              <span style="font-size:0.9rem; color:var(--ink-3)">EMA cross + ADX ≥ 22 + ±DI confirmation</span>
-            </li>
-            <li style="padding:0.6rem 0; border-top:1px solid var(--gold-hair)">
-              <strong>Momentum</strong><br />
-              <span style="font-size:0.9rem; color:var(--ink-3)">MACD histogram + Stochastic %K/%D cross</span>
-            </li>
-            <li style="padding:0.6rem 0; border-top:1px solid var(--gold-hair)">
-              <strong>Mean Reversion</strong><br />
-              <span style="font-size:0.9rem; color:var(--ink-3)">Bollinger touch + RSI extreme + Stochastic turn</span>
-            </li>
-            <li style="padding:0.6rem 0; border-top:1px solid var(--gold-hair)">
-              <strong>Breakout</strong><br />
-              <span style="font-size:0.9rem; color:var(--ink-3)">Donchian pierce + ATR expansion</span>
-            </li>
-          </ul>
+          <p>Каждая выдаёт сигнал с уверенностью 0-1 и markdown-объяснением. Ensemble объединяет голосованием.</p>
+
+          <div class="strat-list">
+            <div class="strat-item">
+              <span class="strat-dot trend">▲</span>
+              <div>
+                <div class="strat-name">Trend Following</div>
+                <div class="strat-desc">EMA50/EMA200 cross + ADX &gt; 25 + ±DI confirmation</div>
+              </div>
+            </div>
+            <div class="strat-item">
+              <span class="strat-dot mom">≋</span>
+              <div>
+                <div class="strat-name">Momentum</div>
+                <div class="strat-desc">MACD histogram &gt; 0 + Stochastic %K/%D cross</div>
+              </div>
+            </div>
+            <div class="strat-item">
+              <span class="strat-dot mr">⇄</span>
+              <div>
+                <div class="strat-name">Mean Reversion</div>
+                <div class="strat-desc">Bollinger touch + RSI extreme + Stochastic turn</div>
+              </div>
+            </div>
+            <div class="strat-item">
+              <span class="strat-dot br">⤴</span>
+              <div>
+                <div class="strat-name">Breakout</div>
+                <div class="strat-desc">Donchian pierce + ATR-expansion фильтр</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="quote" style="margin-top:3rem">
-        Дефолтный ансамбль = Trend + Momentum. Это единственная пара,
-        прошедшая валидацию на synthetic 12-month backtest с положительным
-        ожиданием. Mean Reversion и Breakout доступны опционально через UI.
-      </div>
+      <p class="reveal" style="margin-top:2rem; color:var(--ink-3); font-style:italic; max-width:840px">
+        Дефолтный ансамбль - Trend + Momentum. Эта единственная пара показала
+        положительное ожидание на synthetic walk-forward в backtest v1.0.22.
+        Mean Reversion и Breakout доступны опционально через UI.
+      </p>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── RISK MANAGEMENT ─────────────────────────────────────── -->
-  <section>
+  <!-- ── RISK ENGINE ─────────────────────────────────────────── -->
+  <section id="risk">
     <div class="container">
-      <span class="eyebrow">Управление рисками</span>
-      <h2 class="display" style="margin-top:0.75rem">Три независимых <span class="gold-text">circuit breaker'а</span></h2>
-      <p style="margin-top:1rem; max-width:720px">
-        Каждый guard срабатывает независимо. Tripped state не сбрасывается
-        переключением режима - только полночь UTC или ручной reset.
+      <span class="eyebrow reveal">Risk Engine</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Три независимых <span class="gold-text">circuit breaker'а</span></h2>
+      <p class="lead reveal" style="margin-top:1.25rem; max-width:780px">
+        Каждый сторожит свою метрику. Сработал любой - новые входы блокируются,
+        старые позиции остаются под брокерскими SL/TP. Оператор видит причину в Дашборде.
       </p>
 
-      <div class="grid grid-3" style="margin-top:3rem">
-        <div class="card">
-          <div class="card-icon" style="background:rgba(139,44,44,0.15)">📉</div>
+      <div class="breaker-grid">
+        <div class="breaker laurel reveal">
+          <div class="breaker-gauge">
+            <svg viewBox="0 0 150 150" width="150" height="150">
+              <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(91,122,62,0.15)" stroke-width="10"/>
+              <circle cx="75" cy="75" r="62" fill="none" stroke="#5B7A3E" stroke-width="10"
+                      stroke-dasharray="389.56" stroke-dashoffset="350.6"
+                      stroke-linecap="round" transform="rotate(-90 75 75)"/>
+            </svg>
+            <div class="breaker-val">
+              <div class="breaker-num">-5%</div>
+              <div class="breaker-unit">за сессию</div>
+            </div>
+          </div>
           <h3>Daily Loss Limit</h3>
-          <p><strong>5% от начального equity сессии</strong>. Если today's P&L ≤ −5% → mode переключается в OFF, новые входы блокируются, в Telegram уходит alert.</p>
+          <p>Если эквити упало на 5% от стартового за день - бот перестаёт открывать. Сбрасывается в полночь UTC.</p>
         </div>
-        <div class="card">
-          <div class="card-icon" style="background:rgba(139,44,44,0.15)">📈</div>
+
+        <div class="breaker bronze reveal">
+          <div class="breaker-gauge">
+            <svg viewBox="0 0 150 150" width="150" height="150">
+              <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(155,107,43,0.15)" stroke-width="10"/>
+              <circle cx="75" cy="75" r="62" fill="none" stroke="#9B6B2B" stroke-width="10"
+                      stroke-dasharray="389.56" stroke-dashoffset="311.65"
+                      stroke-linecap="round" transform="rotate(-90 75 75)"/>
+            </svg>
+            <div class="breaker-val">
+              <div class="breaker-num">-10%</div>
+              <div class="breaker-unit">от пика</div>
+            </div>
+          </div>
           <h3>Drawdown Limit</h3>
-          <p><strong>10% от пика equity</strong>. Если equity отскакивает от peak более чем на 10% → стоп. Защищает прибыль, не только депозит.</p>
+          <p>От максимального эквити сессии. Защита от затяжной просадки - не даёт ансамблю усугубить положение.</p>
         </div>
-        <div class="card">
-          <div class="card-icon" style="background:rgba(139,44,44,0.15)">🚫</div>
+
+        <div class="breaker wine reveal">
+          <div class="breaker-gauge">
+            <svg viewBox="0 0 150 150" width="150" height="150">
+              <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(139,44,44,0.15)" stroke-width="10"/>
+              <circle cx="75" cy="75" r="62" fill="none" stroke="#8B2C2C" stroke-width="10"
+                      stroke-dasharray="389.56" stroke-dashoffset="194.78"
+                      stroke-linecap="round" transform="rotate(-90 75 75)"/>
+            </svg>
+            <div class="breaker-val">
+              <div class="breaker-num">5</div>
+              <div class="breaker-unit">max позиций</div>
+            </div>
+          </div>
           <h3>Max Open Positions</h3>
-          <p><strong>5 одновременных позиций</strong>. Защищает от каскадного нагружения брокера и от ситуации «все стратегии одновременно решили войти».</p>
+          <p>Одновременно открыто не более 5 позиций. Защита от перегрева портфеля - новые входы блокируются.</p>
         </div>
       </div>
 
       <div class="grid grid-3" style="margin-top:2rem">
-        <div class="card">
+        <div class="card reveal">
           <div class="card-icon">🎯</div>
           <h3>Broker-side SL/TP</h3>
-          <p>Каждый ордер открывается со стопом и тейком, отправленными напрямую брокеру. <strong>Бот может упасть - позиция закроется сама</strong>. SL = entry − 2×ATR, TP = entry + 4×ATR (risk/reward 1:2).</p>
+          <p>Стопы и таргеты уходят на сервер брокера вместе с ордером (2×ATR / 4×ATR). Закрытие не зависит от состояния бота.</p>
         </div>
-        <div class="card">
-          <div class="card-icon">🩺</div>
+        <div class="card reveal">
+          <div class="card-icon">🐶</div>
           <h3>MT5 Watchdog</h3>
-          <p>На каждом тике health-probe с 8с таймаутом. Один фейл → silent reconnect. Три фейла подряд → пауза + Telegram alert. Восстанавливается прозрачно.</p>
+          <p>Каждый tick - health probe MT5. 3 фейла подряд = пауза + Telegram-уведомление «Брокер недоступен».</p>
         </div>
-        <div class="card">
-          <div class="card-icon">⛔</div>
+        <div class="card reveal">
+          <div class="card-icon">🛑</div>
           <h3>Kill Switch</h3>
-          <p>Одна кнопка → закрытие всех открытых позиций мгновенно. Snapshot цен сделан ДО close, TradeRow корректно обновлён, Telegram alert уходит.</p>
+          <p>Большая красная кнопка в UI закрывает все позиции по рынку немедленно и переводит бота в наблюдение.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── OPERATOR UX ─────────────────────────────────────────── -->
+  <!-- ── UI ───────────────────────────────────────────────────── -->
   <section>
     <div class="container">
-      <span class="eyebrow">Опыт оператора</span>
-      <h2 class="display" style="margin-top:0.75rem">Продуманный <span class="gold-text">интерфейс</span> оператора</h2>
+      <span class="eyebrow reveal">Интерфейс оператора</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Продуманный <span class="gold-text">UX</span> от первого клика</h2>
 
       <div class="grid grid-3" style="margin-top:2.5rem">
-        <div class="card">
-          <div class="card-icon">🎬</div>
-          <h3>Интерактивный тур</h3>
-          <p>При первом запуске Hermes сам проводит оператора по 9 шагам: режимы, индикаторы, безопасность, история. С кинематографичными анимациями.</p>
+        <div class="card reveal">
+          <div class="card-icon">🏛️</div>
+          <h3>Дашборд</h3>
+          <p>Баланс, equity-кривая, P&L по режимам, открытые позиции, drawdown gauge, состояние пар - всё обновляется через WebSocket в реальном времени.</p>
         </div>
-        <div class="card">
-          <div class="card-icon">📡</div>
-          <h3>Реал-тайм через WebSocket</h3>
-          <p>Equity-кривая, баланс, позиции, сигналы - всё push-based. REST остался safety-net на 60 секунд. -82% сетевого трафика по сравнению с polling.</p>
+        <div class="card reveal">
+          <div class="card-icon">📋</div>
+          <h3>Журнал сделок</h3>
+          <p>История с обоснованием каждой сделки. Заметки оператора для post-mortem. Фильтры, CSV/Excel экспорт для бухгалтерии.</p>
         </div>
-        <div class="card">
+        <div class="card reveal">
+          <div class="card-icon">⚙️</div>
+          <h3>Конфигуратор стратегии</h3>
+          <p>Активные стратегии, пары, таймфрейм, ансамбль, режим голосования, пороги уверенности - всё через формы с валидацией.</p>
+        </div>
+        <div class="card reveal">
+          <div class="card-icon">🧪</div>
+          <h3>Backtest</h3>
+          <p>Прогон стратегий на исторических данных. Sharpe, win-rate, max drawdown, equity curve. Загрузка CSV истории.</p>
+        </div>
+        <div class="card reveal">
           <div class="card-icon">📱</div>
           <h3>Мобильный доступ</h3>
-          <p>QR + PIN → ngrok-туннель → дашборд на телефоне. Не браузерная закладка - PWA с push-уведомлениями, иконкой, splash screen.</p>
+          <p>QR-код для PWA через ngrok-туннель. Дашборд в браузере телефона. Web-push уведомления при открытии сделок.</p>
         </div>
-        <div class="card">
-          <div class="card-icon">📨</div>
-          <h3>Telegram нотификации</h3>
-          <p>Bot token + chat_id один раз. Каждая открытая сделка - markdown-отчёт с обоснованием. Kill switch и broker_down - отдельные алерты.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">📊</div>
-          <h3>Per-mode P&L</h3>
-          <p>Три карточки на дашборде: Проверенный, Автономный, Ручные. Оператор видит какой режим реально приносит P&L, какой - нет.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">📦</div>
-          <h3>Tax CSV + Log Bundle</h3>
-          <p>Налоговый отчёт за год одним кликом (формат КГД РК / 1099-B / MiFID). Архив логов для поддержки - без vault, без credentials.</p>
+        <div class="card reveal">
+          <div class="card-icon">🔔</div>
+          <h3>Уведомления</h3>
+          <p>Telegram-бот, web-push, native Windows toasts. Выбор событий: открытие/закрытие сделки, kill-switch, broker_down.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── WALK-FORWARD ───────────────────────────────────────── -->
+  <!-- ── АДАПТАЦИЯ ───────────────────────────────────────────── -->
   <section>
     <div class="container">
-      <span class="eyebrow">Адаптация к рынку</span>
-      <h2 class="display" style="margin-top:0.75rem">Еженедельный <span class="gold-text">переподбор параметров</span></h2>
-      <p style="margin-top:1rem; max-width:780px">
-        Walk-forward калибровка с Optuna. 90 дней OHLCV, разделение 70/30,
-        100 trials. Champion-challenger: новые параметры применяются только если
-        обогнали текущие на out-of-sample с защитой от overfitting.
+      <span class="eyebrow reveal">Адаптивная калибровка</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Еженедельный <span class="gold-text">переподбор параметров</span></h2>
+      <p class="lead reveal" style="margin-top:1.25rem; max-width:780px">
+        Рынок меняется. Параметры стратегий должны меняться вместе с ним -
+        автоматически, безопасно, с возможностью отката.
       </p>
 
-      <div class="grid grid-2" style="margin-top:2.5rem; align-items:start">
-        <div class="card">
-          <h3>Регим-детектор</h3>
-          <p style="margin-bottom:1rem">Для каждой пары на 4h таймфрейме за 30 дней определяет состояние рынка:</p>
-          <div class="chips">
-            <span class="chip accent">trend (ADX &gt; 25)</span>
-            <span class="chip accent">flat (ADX &lt; 20)</span>
-            <span class="chip accent">high_vol (ATR% &gt; 80 percentile)</span>
+      <div class="pipeline">
+        <div class="pipe-step reveal">
+          <div class="pipe-num">01</div>
+          <h4>Регим-детектор</h4>
+          <p>Каждые 5 минут - режим каждой пары: trend / flat / high_vol</p>
+        </div>
+        <div class="pipe-step reveal">
+          <div class="pipe-num">02</div>
+          <h4>Сбор данных</h4>
+          <p>N-дневное окно котировок для обучения, (N+7)-дневное для теста</p>
+        </div>
+        <div class="pipe-step reveal">
+          <div class="pipe-num">03</div>
+          <h4>Walk-forward</h4>
+          <p>Challenger с новыми параметрами против champion с текущими</p>
+        </div>
+        <div class="pipe-step reveal">
+          <div class="pipe-num">04</div>
+          <h4>Применение</h4>
+          <p>Champion заменяется только если Sharpe-ratio challenger'а выше</p>
+        </div>
+        <div class="pipe-step reveal">
+          <div class="pipe-num">05</div>
+          <h4>Откат</h4>
+          <p>Если за 24-48ч после калибровки P&L упал - кнопка «Откатить» в UI</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── АРХИТЕКТУРА ─────────────────────────────────────────── -->
+  <section id="arch">
+    <div class="container">
+      <span class="eyebrow reveal">Архитектура</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Один процесс, <span class="gold-text">четыре слоя</span> ответственности</h2>
+      <p class="lead reveal" style="margin-top:1.25rem; max-width:780px">
+        Hermes - монолит. Один python-процесс, в нём uvicorn, рабочий цикл стратегии,
+        MT5-адаптер. PyWebView грузит React-фронт на эфемерном loopback-порту.
+      </p>
+
+      <div class="arch-stack">
+        <div class="arch-layer reveal">
+          <div class="arch-num">01</div>
+          <div class="arch-text">
+            <h4>Frontend (UI)</h4>
+            <p>Что видит и нажимает оператор. Дашборд, сделки, конфиг, бэктест, адаптация.</p>
           </div>
-          <p style="margin-top:1rem; font-size:0.9rem; color:var(--ink-3)">
-            Глобальный режим - мажоритарное голосование по парам. Используется
-            для policy overlay в Auto-режиме.
-          </p>
+          <div class="arch-tech">
+            React 18<br/>TanStack Query<br/>Vite + TypeScript<br/>TailwindCSS
+          </div>
         </div>
-
-        <div class="card">
-          <h3>Champion vs Challenger</h3>
-          <p style="margin-bottom:1rem">Защита от overfitting:</p>
-          <ul style="list-style:none">
-            <li style="padding:0.5rem 0; border-top:1px solid var(--gold-hair); font-size:0.93rem"><strong>1.</strong> Минимум 50 трейдов на out-of-sample, иначе reject</li>
-            <li style="padding:0.5rem 0; border-top:1px solid var(--gold-hair); font-size:0.93rem"><strong>2.</strong> score = sharpe_oos − 0.5 × |sharpe_is − sharpe_oos|</li>
-            <li style="padding:0.5rem 0; border-top:1px solid var(--gold-hair); font-size:0.93rem"><strong>3.</strong> Применяется только если score_new ≥ 1.05 × score_current</li>
-            <li style="padding:0.5rem 0; border-top:1px solid var(--gold-hair); font-size:0.93rem"><strong>4.</strong> Max DD challenger ≤ 1.2× от champion</li>
-          </ul>
+        <div class="arch-layer reveal">
+          <div class="arch-num">02</div>
+          <div class="arch-text">
+            <h4>Backend API</h4>
+            <p>Мозг приложения. Принимает команды от UI, отдаёт данные, рассылает события через WebSocket.</p>
+          </div>
+          <div class="arch-tech">
+            FastAPI + uvicorn<br/>SQLAlchemy 2 async<br/>aiosqlite<br/>APScheduler
+          </div>
         </div>
-      </div>
-
-      <p style="margin-top:2rem">
-        Оператор видит всю историю калибровок на странице <strong>«Адаптация»</strong> - таблица,
-        diff параметров, кнопка <strong>«Запустить сейчас»</strong> и <strong>«Откатить»</strong>.
-      </p>
-    </div>
-  </section>
-
-  <div class="meander"></div>
-
-  <!-- ── ARCHITECTURE ────────────────────────────────────────── -->
-  <section>
-    <div class="container">
-      <span class="eyebrow">Архитектура</span>
-      <h2 class="display" style="margin-top:0.75rem">Один процесс, <span class="gold-text">локальный pip</span></h2>
-      <p style="margin-top:1rem; max-width:780px">
-        PyWebView нативное окно + FastAPI бэкенд + React SPA в одном Python-процессе.
-        Никаких sidecar'ов, никаких внешних сервисов.
-      </p>
-
-      <div class="arch">
-        <div class="layer">
-          <strong>Native Window (PyWebView · Edge WebView2)</strong><br />
-          frameless · кастомный titlebar · 1440×900 default · brand icon
+        <div class="arch-layer reveal">
+          <div class="arch-num">03</div>
+          <div class="arch-text">
+            <h4>Trading Engine</h4>
+            <p>Алгоритм торговли. Worker + StrategyRunner + IndicatorPanel + StrategyEnsemble + RiskEngine.</p>
+          </div>
+          <div class="arch-tech">
+            async tick-loop (60s)<br/>pandas + numpy<br/>4 стратегии<br/>3 risk-контура
+          </div>
         </div>
-        <div class="layer">
-          <strong>React 18 + Vite + Tailwind + shadcn/ui</strong><br />
-          TanStack Query для server state · Zustand для UI state · Framer Motion для анимаций<br />
-          Lightweight-charts (TradingView-стиль) для equity-кривой
-        </div>
-        <div class="layer">
-          <strong>HTTP / WebSocket (127.0.0.1 · ephemeral port)</strong><br />
-          REST: /api/* · WS: /ws/equity, /ws/positions, /ws/signals
-        </div>
-        <div class="layer">
-          <strong>FastAPI Backend</strong><br />
-          Async + lifespan · CORS + auth middleware · global exception handler<br />
-          IndicatorPanel + StrategyEnsemble + RiskEngine + TradingWorker<br />
-          BrokerRegistry (MT5 / CCXT) + AutoCalibrator (Optuna + walk-forward)<br />
-          NotificationService (Web Push + Telegram + WS fan-out)
-        </div>
-        <div class="layer">
-          <strong>Storage (%APPDATA%\BAI Core\Hermes\)</strong><br />
-          SQLite WAL → app.db (trades · positions · equity · calibrations)<br />
-          credentials.enc (Argon2id + Fernet) · vapid.json · Logs\hermes.log
+        <div class="arch-layer reveal">
+          <div class="arch-num">04</div>
+          <div class="arch-text">
+            <h4>Brokers + Vault</h4>
+            <p>Интерфейс к внешнему миру. Котировки, ордера. Шифрованное хранилище ключей.</p>
+          </div>
+          <div class="arch-tech">
+            MetaTrader5 SDK<br/>CCXT (крипта)<br/>Argon2id + Fernet<br/>Atomic write
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── TECH STACK ──────────────────────────────────────────── -->
-  <section>
+  <!-- ── ТЕХ-СТЕК ────────────────────────────────────────────── -->
+  <section id="stack">
     <div class="container">
-      <span class="eyebrow">Технологический стек</span>
-      <h2 class="display" style="margin-top:0.75rem">Современный <span class="gold-text">production-ready</span> стек</h2>
+      <span class="eyebrow reveal">Технологии</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Современный <span class="gold-text">production-ready</span> стек</h2>
 
-      <div class="tech-grid" style="margin-top:2.5rem">
-        <div class="tech-item"><div class="label">Backend</div><div class="value">Python 3.11+</div></div>
-        <div class="tech-item"><div class="label">Web framework</div><div class="value">FastAPI 0.115+</div></div>
-        <div class="tech-item"><div class="label">ORM</div><div class="value">SQLAlchemy 2.0 async</div></div>
-        <div class="tech-item"><div class="label">DB</div><div class="value">SQLite WAL</div></div>
-        <div class="tech-item"><div class="label">Frontend</div><div class="value">React 18</div></div>
-        <div class="tech-item"><div class="label">Bundler</div><div class="value">Vite 5</div></div>
-        <div class="tech-item"><div class="label">Styles</div><div class="value">Tailwind 3</div></div>
-        <div class="tech-item"><div class="label">Desktop</div><div class="value">PyWebView 5</div></div>
-        <div class="tech-item"><div class="label">Broker MT5</div><div class="value">MetaTrader5 SDK</div></div>
-        <div class="tech-item"><div class="label">Broker Crypto</div><div class="value">CCXT 4 (in progress)</div></div>
-        <div class="tech-item"><div class="label">ML / Optimizer</div><div class="value">Optuna 4</div></div>
-        <div class="tech-item"><div class="label">Indicators</div><div class="value">NumPy / Pandas / SciPy</div></div>
-        <div class="tech-item"><div class="label">Crypto</div><div class="value">Argon2id + Fernet</div></div>
-        <div class="tech-item"><div class="label">Charts</div><div class="value">Lightweight-charts</div></div>
-        <div class="tech-item"><div class="label">Installer</div><div class="value">Inno Setup 6</div></div>
-        <div class="tech-item"><div class="label">Tests</div><div class="value">pytest + vitest</div></div>
+      <h3 class="reveal" style="margin-top:2.5rem">Backend</h3>
+      <div class="tech-grid">
+        <div class="tech-item reveal"><div class="label">Язык</div><div class="value">Python 3.13</div></div>
+        <div class="tech-item reveal"><div class="label">Web framework</div><div class="value">FastAPI</div></div>
+        <div class="tech-item reveal"><div class="label">ORM</div><div class="value">SQLAlchemy 2 async</div></div>
+        <div class="tech-item reveal"><div class="label">БД</div><div class="value">SQLite WAL</div></div>
+        <div class="tech-item reveal"><div class="label">Брокер</div><div class="value">MetaTrader5 SDK</div></div>
+        <div class="tech-item reveal"><div class="label">Крипта</div><div class="value">CCXT</div></div>
+        <div class="tech-item reveal"><div class="label">Аналитика</div><div class="value">pandas + numpy</div></div>
+        <div class="tech-item reveal"><div class="label">Scheduler</div><div class="value">APScheduler</div></div>
+      </div>
+
+      <h3 class="reveal" style="margin-top:2.5rem">Frontend</h3>
+      <div class="tech-grid">
+        <div class="tech-item reveal"><div class="label">UI framework</div><div class="value">React 18</div></div>
+        <div class="tech-item reveal"><div class="label">Types</div><div class="value">TypeScript</div></div>
+        <div class="tech-item reveal"><div class="label">Bundler</div><div class="value">Vite</div></div>
+        <div class="tech-item reveal"><div class="label">Server state</div><div class="value">TanStack Query</div></div>
+        <div class="tech-item reveal"><div class="label">Стили</div><div class="value">TailwindCSS</div></div>
+        <div class="tech-item reveal"><div class="label">Графики</div><div class="value">lightweight-charts</div></div>
+        <div class="tech-item reveal"><div class="label">PWA</div><div class="value">vite-plugin-pwa</div></div>
+        <div class="tech-item reveal"><div class="label">Иконки</div><div class="value">lucide-react</div></div>
+      </div>
+
+      <h3 class="reveal" style="margin-top:2.5rem">Desktop &amp; CI/CD</h3>
+      <div class="tech-grid">
+        <div class="tech-item reveal"><div class="label">Wrapper</div><div class="value">PyWebView 5</div></div>
+        <div class="tech-item reveal"><div class="label">Runtime</div><div class="value">Edge WebView2</div></div>
+        <div class="tech-item reveal"><div class="label">Bundler</div><div class="value">PyInstaller</div></div>
+        <div class="tech-item reveal"><div class="label">Installer</div><div class="value">Inno Setup</div></div>
+        <div class="tech-item reveal"><div class="label">CI</div><div class="value">GitHub Actions</div></div>
+        <div class="tech-item reveal"><div class="label">Релизы</div><div class="value">Tag-driven</div></div>
+        <div class="tech-item reveal"><div class="label">Тесты</div><div class="value">pytest + tsc strict</div></div>
+        <div class="tech-item reveal"><div class="label">Подпись</div><div class="value">SHA256SUMS</div></div>
       </div>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── INSTALLATION + UPDATES ──────────────────────────────── -->
-  <section>
+  <!-- ── УСТАНОВКА ───────────────────────────────────────────── -->
+  <section id="install">
     <div class="container">
-      <span class="eyebrow">Установка и обновления</span>
-      <h2 class="display" style="margin-top:0.75rem">Установка <span class="gold-text">двойным кликом</span></h2>
+      <span class="eyebrow reveal">Установка</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Установка <span class="gold-text">двойным кликом</span></h2>
 
       <div class="grid grid-2" style="margin-top:2.5rem">
-        <div class="card">
+        <div class="card reveal">
           <div class="card-icon">📥</div>
           <h3>Первая установка</h3>
-          <p>Скачать <span class="mono">Hermes-Setup-1.0.27.exe</span> с GitHub Releases (~80 МБ).
-          Двойной клик → русский wizard с лого BAI Core → за 30 секунд готово.
-          Установка per-user в <span class="mono" style="font-size:0.85em">%LOCALAPPDATA%\Programs\Hermes</span> - без UAC.</p>
+          <p style="margin-bottom:1rem">Скачиваете <span class="mono">Hermes-Setup-1.0.40.exe</span> с GitHub Releases (~110 МБ). Двойной клик → Inno Setup → «Установить». Без админских прав, в user-space.</p>
+          <p>После установки: запустить MT5 (если ещё не запущен) → открыть Hermes → подключить брокера в одной форме → стратегия → запуск.</p>
         </div>
-        <div class="card">
+        <div class="card reveal">
           <div class="card-icon">🔄</div>
           <h3>Обновление без переустановки</h3>
-          <p>Inno Setup детектит существующую установку по фиксированному AppId,
-          закрывает старый Hermes.exe (<span class="mono">CloseApplications=force</span>),
-          подменяет файлы, перезапускает новую версию. <strong>Vault, БД, стратегии - сохраняются.</strong></p>
+          <p style="margin-bottom:1rem">Hermes сам проверяет новые версии в Releases. Уведомление в UI - один клик «Обновить» - новый установщик ставится поверх старого.</p>
+          <p>База данных, vault, ui-prefs сохраняются. Версии 1.0.31+ автоматически мигрируют пользователей с master-password на passwordless mode.</p>
         </div>
       </div>
-
-      <p style="margin-top:2rem; max-width:780px">
-        Update Service внутри приложения автоматически проверяет GitHub Releases каждый раз
-        при открытии Settings. Если есть новая версия - баннер с release notes + кнопка
-        «Скачать и установить».
-      </p>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── VALIDATION ──────────────────────────────────────────── -->
+  <!-- ── КАЧЕСТВО ────────────────────────────────────────────── -->
   <section>
     <div class="container">
-      <span class="eyebrow">Валидация и тестирование</span>
-      <h2 class="display" style="margin-top:0.75rem">Многоуровневая <span class="gold-text">валидация</span></h2>
+      <span class="eyebrow reveal">Качество кода</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Многоуровневая <span class="gold-text">валидация</span></h2>
 
       <div class="grid grid-3" style="margin-top:2.5rem">
-        <div class="card">
-          <h3>76 автоматизированных тестов</h3>
-          <p>Unit тесты vault, KDF, JWT, validator, regime detector, signal ensemble.
-          Integration - broker adapters (mocked), risk engine, daily counter.
-          E2E - smoke API на лайв backend через ASGI.</p>
+        <div class="card reveal">
+          <div class="card-icon">✅</div>
+          <h3>76 pytest-тестов</h3>
+          <p>Unit-тесты IndicatorPanel и стратегий, integration через httpx ASGI transport. CI прогоняет на каждый коммит.</p>
         </div>
-        <div class="card">
-          <h3>Backtest валидация стратегий</h3>
-          <p>На каждом коммите запускается mini-backtest по синтетическим данным.
-          Default ensemble (Trend + Momentum) обязан показать положительное
-          ожидание - иначе CI красный, релиз заблокирован.</p>
+        <div class="card reveal">
+          <div class="card-icon">🔬</div>
+          <h3>Backtest-валидация</h3>
+          <p>v1.0.22 walk-forward на synthetic data: Trend Following + Momentum дали Sharpe &gt; 1. Mean Reversion и Breakout не вошли в дефолтный ансамбль до подтверждения.</p>
         </div>
-        <div class="card">
-          <h3>Walk-forward в продакшене</h3>
-          <p>Champion-challenger валидация каждое воскресенье. Параметры
-          применяются только при положительной разнице sharpe_oos с защитой
-          от overfitting. Без этого - rollback к предыдущим.</p>
+        <div class="card reveal">
+          <div class="card-icon">🛠️</div>
+          <h3>TypeScript strict</h3>
+          <p>noUncheckedIndexedAccess, no implicit any. Все API-ответы типизированы из Pydantic-схем. Билд падает на любом несоответствии.</p>
         </div>
-      </div>
-
-      <div class="badge-row" style="margin-top:2rem">
-        <span class="badge green">✓ Backend pytest 76/76</span>
-        <span class="badge green">✓ Frontend tsc clean</span>
-        <span class="badge green">✓ Vitest passing</span>
-        <span class="badge gold">⚡ CI ~4 min</span>
-        <span class="badge blue">📦 Release auto-build on tag</span>
       </div>
     </div>
   </section>
-
-  <div class="meander"></div>
 
   <!-- ── ROADMAP ─────────────────────────────────────────────── -->
-  <section>
+  <section id="roadmap">
     <div class="container">
-      <span class="eyebrow">Дорожная карта</span>
-      <h2 class="display" style="margin-top:0.75rem">Что сделано · что дальше</h2>
+      <span class="eyebrow reveal">Дорожная карта</span>
+      <h2 class="reveal" style="margin-top:0.75rem">Что сделано · <span class="gold-text">что дальше</span></h2>
 
-      <div class="timeline">
-        <div class="tl-item done">
-          <div class="tl-version">v1.0.0 - v1.0.21</div>
-          <div class="tl-title">Foundation</div>
-          <div class="tl-desc">Установщик, vault, MT5 коннект, onboarding wizard, два режима торговли, indicator engine, ensemble с объяснениями, tutorial.</div>
+      <div class="timeline-grid">
+        <div>
+          <h3 class="reveal" style="margin-bottom:1rem">Готово</h3>
+          <div class="timeline">
+            <div class="tl-item done reveal">
+              <div class="tl-version">v1.0.26 - v1.0.40</div>
+              <div class="tl-title">Production-ready релизы</div>
+              <div class="tl-desc">Авто-обновление, walk-forward, Telegram, PWA, broker-side SL/TP, риск-движок.</div>
+            </div>
+            <div class="tl-item done reveal">
+              <div class="tl-version">v1.0.22</div>
+              <div class="tl-title">Объяснимый ансамбль</div>
+              <div class="tl-desc">4 стратегии, голосование, markdown-обоснование каждой сделки.</div>
+            </div>
+            <div class="tl-item done reveal">
+              <div class="tl-version">v1.0.18 - v1.0.20</div>
+              <div class="tl-title">UI + WebSocket real-time</div>
+              <div class="tl-desc">11 экранов, live-обновления, Tutorial, аналитика, KPI cards.</div>
+            </div>
+            <div class="tl-item done reveal">
+              <div class="tl-version">v1.0.10 - v1.0.16</div>
+              <div class="tl-title">Backtest + оптимизация</div>
+              <div class="tl-desc">Прогон стратегий на CSV-истории, grid search, лидерборд параметров.</div>
+            </div>
+          </div>
         </div>
-        <div class="tl-item done">
-          <div class="tl-version">v1.0.22 - v1.0.25</div>
-          <div class="tl-title">Validation & Safety</div>
-          <div class="tl-desc">Backtest нашёл что v1.0.21 ensemble терял бы деньги → исправлено. Risk Engine, MT5 watchdog, position-level close, per-mode P&L, broker-side SL/TP, log bundle, close-logic reconciliation, Telegram нотификации, strategy editor UI, Tax CSV.</div>
-        </div>
-        <div class="tl-item done">
-          <div class="tl-version">v1.0.26 - v1.0.40</div>
-          <div class="tl-title">Adaptation & Performance</div>
-          <div class="tl-desc">Walk-forward UI (триггер калибровки + champion-challenger diff). WS-driven live updates - −82% HTTP-нагрузки, sparkline дышит в реал-тайм.</div>
-        </div>
-        <div class="tl-item next">
-          <div class="tl-version">v1.1 - следующий релиз</div>
-          <div class="tl-title">CCXT testnet · Code signing · macOS</div>
-          <div class="tl-desc">CCXT Binance/Bybit/OKX end-to-end на testnet. EV-сертификат для подписи Windows exe (SmartScreen). macOS .pkg билд с notarization. Эти три блокера снимают барьер для широкого запуска.</div>
-        </div>
-        <div class="tl-item next">
-          <div class="tl-version">v1.2 - после релиза</div>
-          <div class="tl-title">i18n · Trade journal · News feed</div>
-          <div class="tl-desc">RU/EN/KZ локализация. Trade journal с заметками per trade. Интеграция новостных лент (Reuters / Bloomberg) с FinBERT sentiment scoring как дополнительный сигнал.</div>
+
+        <div>
+          <h3 class="reveal" style="margin-bottom:1rem">В разработке</h3>
+          <div class="timeline">
+            <div class="tl-item next reveal">
+              <div class="tl-version">v1.1.x</div>
+              <div class="tl-title">Расширение библиотеки стратегий</div>
+              <div class="tl-desc">Pairs trading, Volatility arbitrage, news-based filtering.</div>
+            </div>
+            <div class="tl-item next reveal">
+              <div class="tl-version">v1.2.x</div>
+              <div class="tl-title">Multi-broker одновременно</div>
+              <div class="tl-desc">MT5 + Binance + Bybit параллельно, единый портфельный риск-движок.</div>
+            </div>
+            <div class="tl-item next reveal">
+              <div class="tl-version">v1.3.x</div>
+              <div class="tl-title">Облачная синхронизация Trade Journal</div>
+              <div class="tl-desc">Опциональная (по согласию пользователя), end-to-end шифрование.</div>
+            </div>
+            <div class="tl-item next reveal">
+              <div class="tl-version">v2.x</div>
+              <div class="tl-title">ML-сигналы</div>
+              <div class="tl-desc">Сценарии входа от моделей рядом с правилами. Объяснимость сохраняется через SHAP.</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <div class="meander"></div>
-
-  <!-- ── SUMMARY ─────────────────────────────────────────────── -->
-  <section style="padding-bottom:6rem">
-    <div class="container">
-      <span class="eyebrow">Резюме</span>
-      <h2 class="display" style="margin-top:0.75rem; max-width:880px">
-        Готовый <span class="gold-text">production-ready</span> продукт<br />
-        для серьёзной торговли
-      </h2>
-
-      <div class="grid grid-4" style="margin-top:3rem">
-        <div class="stat-card">
-          <div class="stat-num">27</div>
-          <div class="stat-label">релизов с фиксами</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num">76</div>
-          <div class="stat-label">CI тестов · 100%</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num">3</div>
-          <div class="stat-label">слоя защиты</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num">1.5s</div>
-          <div class="stat-label">linger WS reconnect</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num">2×ATR</div>
-          <div class="stat-label">broker-side SL</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num">4×ATR</div>
-          <div class="stat-label">broker-side TP</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num">5%</div>
-          <div class="stat-label">daily loss cap</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num">10%</div>
-          <div class="stat-label">drawdown cap</div>
-        </div>
-      </div>
-
-      <div class="quote" style="margin-top:3rem; font-size:1.7rem">
-        Hermes даёт оператору видеть как работают его деньги.
-        Правила задаёт человек, бот исполняет и докладывает по каждой сделке.
-      </div>
-    </div>
-  </section>
-
+  <!-- ── FOOTER ──────────────────────────────────────────────── -->
   <footer>
     <div class="container">
-      <p class="display gold-text" style="font-size:1.5rem; font-weight:600">Hermes Trading Bot</p>
-      <p style="margin-top:0.5rem; font-size:0.9rem">Разработано <a href="https://baicore.kz" target="_blank" rel="noopener">BAI Core · baicore.kz</a></p>
-      <p style="margin-top:0.5rem; font-size:0.8rem; color:var(--ink-4)">Презентация на v1.0.40 · Обновлено: 30 мая 2026</p>
+      <div class="footer-mark">Ἑ</div>
+      <h3 class="display" style="font-size:2rem">Hermes · BAI Core Trader</h3>
+      <p style="margin-top:0.5rem; font-size:0.95rem">
+        <a href="https://baicore.kz" target="_blank" rel="noopener">baicore.kz</a>
+        ·
+        <a href="https://github.com/artsignstudiokz/Hermes" target="_blank" rel="noopener">GitHub</a>
+        ·
+        <a href="mailto:support@baicore.kz">support@baicore.kz</a>
+      </p>
+
+      <div class="badges">
+        <span class="badge gold">v1.0.40 · production-ready</span>
+        <span class="badge green">76 pytest-тестов</span>
+        <span class="badge blue">Windows · macOS roadmap</span>
+        <span class="badge gold">MIT-style лицензия</span>
+      </div>
+
+      <p style="margin-top:1.5rem; font-size:0.8rem; color:var(--ink-4)">
+        Презентация на v1.0.40 · Обновлено: 30 мая 2026
+      </p>
     </div>
   </footer>
+
+  <script>
+    // Reveal-on-scroll
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      }
+    }, { threshold: 0.12, rootMargin: '0px 0px -80px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // Reading progress bar
+    const progress = document.getElementById('nav-progress');
+    function updateProgress() {
+      const h = document.documentElement;
+      const max = (h.scrollHeight - h.clientHeight) || 1;
+      const pct = Math.min(100, Math.max(0, (h.scrollTop / max) * 100));
+      progress.style.width = pct.toFixed(2) + '%';
+    }
+    document.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
+  </script>
 
 </body>
 </html>
