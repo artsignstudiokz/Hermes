@@ -384,11 +384,67 @@
     }
     .arch .layer strong { color: var(--gold-3); font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.88rem; letter-spacing: 0.05em; }
 
-    /* Print */
+    /* Print - tuned for Chrome --print-to-pdf landscape A4. Each
+       <section> becomes one slide via forced page-break. Backgrounds
+       and gold accents are preserved with -webkit-print-color-adjust. */
+    @page {
+      size: A4 landscape;
+      margin: 12mm 14mm;
+    }
     @media print {
-      section { padding: 2.5rem 0; page-break-inside: avoid; }
-      body { background: white; }
-      .card:hover { transform: none; box-shadow: none; }
+      html, body {
+        background: var(--bg) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      body {
+        background-image:
+          radial-gradient(ellipse at 0% 0%, rgba(212,175,55,0.14) 0%, transparent 50%),
+          radial-gradient(ellipse at 100% 100%, rgba(91,122,62,0.09) 0%, transparent 55%) !important;
+      }
+      .container { max-width: 100%; padding: 0; }
+      section {
+        padding: 0 !important;
+        margin: 0 !important;
+        page-break-before: always;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        break-inside: avoid;
+        min-height: 0 !important;
+        display: block !important;
+      }
+      section:first-of-type { page-break-before: avoid; }
+      .hero { min-height: 0 !important; padding-top: 0 !important; }
+      h1 { font-size: 3rem !important; }
+      h2 { font-size: 2.1rem !important; margin-top: 0 !important; }
+      h3 { font-size: 1.2rem !important; }
+      .lead { font-size: 1rem !important; }
+      p, .card p, .mode-card li, .stat-label, .tl-desc {
+        font-size: 0.82rem !important;
+        line-height: 1.45 !important;
+      }
+      .stat-num { font-size: 1.6rem !important; }
+      .stat-card, .card, .tech-item { padding: 0.85rem 1rem !important; border-radius: 10px !important; }
+      .mode-card { padding: 1.3rem !important; border-radius: 14px !important; }
+      .grid { gap: 0.7rem !important; }
+      .hero-stats { gap: 0.6rem !important; margin-top: 1.1rem !important; }
+      .card:hover { transform: none; box-shadow: none; border-color: var(--gold-line); }
+      .meander { display: none; }
+      footer { page-break-before: always; padding: 2rem 0 !important; }
+      .card-icon { width: 36px; height: 36px; font-size: 1.1rem; margin-bottom: 0.5rem; }
+      .pipe-step { padding: 0.85rem 0.7rem !important; }
+      .pipe-num { font-size: 1.1rem !important; }
+      .pipe-step h4 { font-size: 0.85rem !important; }
+      .pipe-step p { font-size: 0.72rem !important; line-height: 1.35 !important; }
+      .arch { padding: 1rem !important; font-size: 0.7rem !important; }
+      .arch .layer { padding: 0.6rem 0.8rem !important; margin-bottom: 0.45rem !important; }
+      .quote { font-size: 1.1rem !important; margin: 1rem 0 !important; }
+      .timeline { margin-top: 1rem !important; }
+      .tl-item { padding-bottom: 0.9rem !important; }
+      .tl-title { font-size: 1rem !important; }
+      .chips { gap: 0.3rem !important; margin-top: 0.8rem !important; }
+      .chip { padding: 0.3rem 0.65rem !important; font-size: 0.68rem !important; }
     }
   </style>
 </head>
@@ -397,7 +453,7 @@
   <!-- ── HERO ─────────────────────────────────────────────────── -->
   <section class="hero">
     <div class="container hero-content">
-      <span class="hero-tag">v1.0.27 · Production-ready · Build 28</span>
+      <span class="hero-tag">v1.0.40 · Production-ready · Build 41</span>
       <h1>
         <span class="gold-text">Hermes</span> Trading Bot
         <br />Десктопный торговый бот от BAI Core
@@ -900,7 +956,7 @@
           <div class="tl-desc">Backtest нашёл что v1.0.21 ensemble терял бы деньги → исправлено. Risk Engine, MT5 watchdog, position-level close, per-mode P&L, broker-side SL/TP, log bundle, close-logic reconciliation, Telegram нотификации, strategy editor UI, Tax CSV.</div>
         </div>
         <div class="tl-item done">
-          <div class="tl-version">v1.0.26 - v1.0.27</div>
+          <div class="tl-version">v1.0.26 - v1.0.40</div>
           <div class="tl-title">Adaptation & Performance</div>
           <div class="tl-desc">Walk-forward UI (триггер калибровки + champion-challenger diff). WS-driven live updates - −82% HTTP-нагрузки, sparkline дышит в реал-тайм.</div>
         </div>
@@ -975,7 +1031,7 @@
     <div class="container">
       <p class="display gold-text" style="font-size:1.5rem; font-weight:600">Hermes Trading Bot</p>
       <p style="margin-top:0.5rem; font-size:0.9rem">Разработано <a href="https://baicore.kz" target="_blank" rel="noopener">BAI Core · baicore.kz</a></p>
-      <p style="margin-top:0.5rem; font-size:0.8rem; color:var(--ink-4)">Презентация на v1.0.27 · Обновлено: 29 мая 2026</p>
+      <p style="margin-top:0.5rem; font-size:0.8rem; color:var(--ink-4)">Презентация на v1.0.40 · Обновлено: 30 мая 2026</p>
     </div>
   </footer>
 
