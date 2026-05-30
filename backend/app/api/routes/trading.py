@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.api.schemas.trading import KillSwitchResult, StartRequest, TradingStatus
+from app.core.brokers.mt5_adapter import BrokerOrderRejected
 from app.deps import require_unlocked_vault
 from app.services.trading_service import TradingService, get_trading_service
 
@@ -191,6 +192,11 @@ async def test_order(
             comment=req.comment, risk_pct=req.risk_pct,
         )
         return ManualOpenResult(**result)
+    except BrokerOrderRejected as e:
+        # v1.0.40: pass the translated broker reason through unchanged
+        # (e.g. "Рынок закрыт - откроется в понедельник около 03:00")
+        # so the SPA toast is actionable.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
     except Exception as e:  # noqa: BLE001

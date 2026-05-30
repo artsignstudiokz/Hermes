@@ -15,6 +15,18 @@ from typing import Any
 import pandas as pd
 
 from app.core.brokers.base import BrokerAdapter
+
+
+class BrokerOrderRejected(Exception):
+    """MT5 returned a non-DONE retcode for an order request.
+
+    The message is already translated into a user-facing Russian
+    string (see MT5Adapter._translate_retcode). Callers in route
+    handlers raise HTTP 400 with this message so the SPA toast
+    reads "Рынок закрыт" instead of "Брокер отклонил ордер".
+    """
+
+
 from app.core.brokers.models import (
     AccountInfo,
     BrokerCredentials,
@@ -242,12 +254,15 @@ class MT5Adapter(BrokerAdapter):
             request["tp"] = float(req.take_profit)
         result = await asyncio.to_thread(mt5.order_send, request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
-            err = result.comment if result else "send returned None"
+            err = self._translate_retcode(result, mt5)
             logger.error(
                 "Order failed for %s (vol=%s, fill=%s): %s",
                 broker_symbol, volume, filling_mode, err,
             )
-            return None
+            # v1.0.40: surface a translated reason via a tagged exception
+            # so the route can show "Рынок закрыт" instead of the
+            # vendor-generic "Брокер отклонил ордер".
+            raise BrokerOrderRejected(err)
 
         return Order(
             ticket=str(result.order),
@@ -258,6 +273,56 @@ class MT5Adapter(BrokerAdapter):
             timestamp=datetime.now(timezone.utc),
             comment=req.comment,
         )
+
+    def _translate_retcode(self, result: Any, mt5: Any) -> str:
+        """Map an MT5 retcode + comment into a clear Russian message.
+
+        Most retcodes have a `comment` that's reasonable, but the few
+        common ones (market closed, trade disabled, off-quotes) deserve
+        a friendly translation so the operator doesn't blame the bot
+        when the FX market is shut for the weekend.
+        """
+        if result is None:
+            return "Терминал MT5 не ответил - проверьте что он открыт и подключён."
+        code = int(getattr(result, "retcode", 0))
+        comment = getattr(result, "comment", "") or ""
+        # Mapping of common retcodes we want to surface clearly.
+        # Numeric values are stable across MT5 versions.
+        friendly: dict[int, str] = {
+            10004: "Запрошена котировка - попробуйте снова через несколько секунд.",
+            10006: "Заявка отклонена брокером.",
+            10007: "Заявка отменена трейдером.",
+            10008: "Заявка размещена.",
+            10013: "Заявка некорректна - проверьте символ и объём.",
+            10014: "Некорректный объём ордера.",
+            10015: "Цена изменилась - попробуйте снова.",
+            10016: "Некорректные стопы (SL/TP слишком близко к цене).",
+            10017: "Торговля отключена для этого символа.",
+            10018: "Рынок закрыт - откроется в понедельник около 03:00 по Алматы.",
+            10019: "Недостаточно средств на счёте.",
+            10020: "Котировки устарели - подождите следующего тика.",
+            10021: "Нет котировок для этого символа.",
+            10022: "Некорректная дата истечения ордера.",
+            10023: "Состояние ордера изменилось.",
+            10024: "Слишком частые запросы - сбавьте обороты.",
+            10025: "На счёте уже изменения - запрос отвергнут.",
+            10026: "Автотрейдинг отключён на сервере брокера.",
+            10027: "Автотрейдинг отключён в терминале.",
+            10028: "Запрос заблокирован для обработки.",
+            10029: "Не удалось исполнить ордер.",
+            10030: "Неподдерживаемый режим исполнения (filling mode).",
+            10031: "Нет связи с торговым сервером.",
+            10032: "Операция доступна только для реального счёта.",
+            10033: "Достигнут лимит количества отложенных ордеров.",
+            10034: "Достигнут лимит объёма по символу.",
+            10035: "Некорректный или запрещённый тип ордера.",
+            10036: "Позиция уже закрыта.",
+        }
+        msg = friendly.get(code)
+        if msg:
+            return msg
+        # Fallback: include code + comment so we don't hide info.
+        return f"Брокер отклонил ордер (код {code}): {comment}".strip()
 
     def _pick_filling_mode(self, info: Any) -> int:
         """Pick a filling mode the symbol's MT5 broker honours.
