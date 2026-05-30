@@ -202,17 +202,35 @@ class MT5Adapter(BrokerAdapter):
         order_type = mt5.ORDER_TYPE_BUY if req.direction == Direction.LONG else mt5.ORDER_TYPE_SELL
         price = tick.ask if req.direction == Direction.LONG else tick.bid
 
+        # v1.0.38: snap volume to the symbol's lot_step and floor at
+        # volume_min, otherwise MT5 rejects with "Invalid volume". Our
+        # _scale_lot already rounds to 0.01 but symbols can have
+        # different steps (BTCUSD often 0.001; XAUUSD 0.01; metals
+        # 0.1) and different minimums.
+        info = await asyncio.to_thread(self._mt5.symbol_info, broker_symbol)
+        volume = float(req.lot_size)
+        if info is not None:
+            step = float(info.volume_step) or 0.01
+            vmin = float(info.volume_min) or 0.01
+            vmax = float(info.volume_max) or 100.0
+            volume = max(vmin, min(vmax, round(round(volume / step) * step, 8)))
+
+        # v1.0.38: not every broker honours IOC. Exness Trial frequently
+        # rejects with "Unsupported filling mode". Pick a mode the
+        # symbol actually allows.
+        filling_mode = self._pick_filling_mode(info)
+
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": broker_symbol,
-            "volume": float(req.lot_size),
+            "volume": volume,
             "type": order_type,
             "price": price,
             "deviation": req.deviation_points,
             "magic": req.magic,
             "comment": req.comment[:31] or "hermes",
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": filling_mode,
         }
         # Broker-side SL/TP - survive bot crashes, OS reboots, network
         # drops. MT5 will close the position autonomously when price
@@ -225,18 +243,37 @@ class MT5Adapter(BrokerAdapter):
         result = await asyncio.to_thread(mt5.order_send, request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             err = result.comment if result else "send returned None"
-            logger.error("Order failed for %s: %s", broker_symbol, err)
+            logger.error(
+                "Order failed for %s (vol=%s, fill=%s): %s",
+                broker_symbol, volume, filling_mode, err,
+            )
             return None
 
         return Order(
             ticket=str(result.order),
             symbol=req.symbol,
             direction=req.direction,
-            lot_size=req.lot_size,
+            lot_size=volume,
             entry_price=float(price),
             timestamp=datetime.now(timezone.utc),
             comment=req.comment,
         )
+
+    def _pick_filling_mode(self, info: Any) -> int:
+        """Pick a filling mode the symbol's MT5 broker honours.
+
+        symbol_info.filling_mode is a bitmask where bit 0 = FOK is
+        allowed, bit 1 = IOC. RETURN (mode 2) has no bit and is the
+        universal fallback. Order of preference: FOK (atomic),
+        IOC (partial-fill), then RETURN (queue the leftover).
+        """
+        mt5 = self._mt5
+        mask = int(getattr(info, "filling_mode", 0)) if info else 0
+        if mask & 1:
+            return mt5.ORDER_FILLING_FOK
+        if mask & 2:
+            return mt5.ORDER_FILLING_IOC
+        return mt5.ORDER_FILLING_RETURN
 
     async def close_position(self, ticket: str, lots: float | None = None) -> bool:
         self._ensure_connected()

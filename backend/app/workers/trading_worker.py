@@ -370,7 +370,9 @@ class TradingWorker:
         # Risk-scaled lot: target ~0.5% of equity per trade. Floors at
         # 0.01 lot (broker minimum on Exness FX majors). The risk engine
         # already vetoed if equity is dangerously low, so we just scale.
-        equity = float(self._risk.last_equity or 0.0)
+        # v1.0.38: state.last_equity (not .last_equity); the engine
+        # carries its live values inside a nested RiskState dataclass.
+        equity = float(self._risk.state.last_equity or 0.0)
         lot_size = _scale_lot(equity, risk_pct=0.5)
 
         async with self._entry_lock:
