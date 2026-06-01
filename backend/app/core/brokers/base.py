@@ -58,6 +58,17 @@ class BrokerAdapter(ABC):
         """
         return True, ""
 
+    async def get_deal_for_position(self, ticket: str) -> dict | None:
+        """Best-effort lookup of the closing deal for a position ticket.
+
+        Returns a dict like
+        {"exit_price": float, "pnl": float, "trigger": "tp"|"sl"|"manual"}
+        if the broker exposes the history. MT5Adapter implements this
+        via deals_get(); other adapters can return None to skip the
+        enriched notification.
+        """
+        return None
+
     # ── Account ──────────────────────────────────────────────────────────────
     @abstractmethod
     async def get_account(self) -> AccountInfo: ...

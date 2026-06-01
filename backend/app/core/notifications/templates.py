@@ -60,20 +60,91 @@ def _ru(event: dict) -> dict[str, str]:
         }
     if t == "trade_opened":
         # Auto-entry from the ensemble (proven / autonomous mode). Carries
-        # the mode, confidence, and the markdown reason from the signal.
+        # the mode, confidence, lot, entry, sl, tp, plus the markdown
+        # reason from the signal. The Telegram message lays them out as
+        # a trader's brief - direction, prices, ratio - so the operator
+        # can validate from their phone without opening the dashboard.
         side_word = "Покупка" if direction == "long" else "Продажа"
         mode_word = {"proven": "Проверенный", "autonomous": "Автономный"}.get(
             event.get("mode", ""), event.get("mode", ""),
         )
         conf = event.get("confidence", 0)
+        lot = event.get("lot")
+        entry = event.get("entry")
+        sl = event.get("sl")
+        tp = event.get("tp")
+
+        # Compute risk/reward distance if we have all three prices.
+        rr_line = ""
+        if entry and sl and tp:
+            risk = abs(entry - sl)
+            reward = abs(tp - entry)
+            if risk > 0:
+                rr_line = f"\nR/R: 1:{reward / risk:.1f}"
+
+        # Price formatting: 5 digits for FX majors, fewer for instruments
+        # with bigger quotes (XAUUSD, BTCUSD). Pick by magnitude.
+        def fmt(p: float | None) -> str:
+            if p is None: return "-"
+            if p >= 1000: return f"{p:.2f}"
+            if p >= 100: return f"{p:.3f}"
+            return f"{p:.5f}"
+
+        lines = [
+            f"<b>🟢 Hermes открыл сделку</b> ({mode_word})",
+            "",
+            f"<b>{sym}</b> · {_arrow(direction)} {side_word}",
+            f"Уверенность: <b>{conf:.2f}</b>",
+        ]
+        if lot is not None:
+            lines.append(f"Объём: <b>{lot}</b> лот")
+        if entry is not None:
+            lines.append(f"Вход: <code>{fmt(entry)}</code>")
+        if sl is not None:
+            lines.append(f"Stop Loss: <code>{fmt(sl)}</code>")
+        if tp is not None:
+            lines.append(f"Take Profit: <code>{fmt(tp)}</code>{rr_line}")
+        reason = (event.get("reason") or "")[:400]
+        if reason:
+            lines += ["", f"<i>{reason}</i>"]
+
         return {
             "title": f"Hermes · {sym} открыто",
-            "body": f"{_arrow(direction)} {side_word} {sym} · режим {mode_word}",
-            "body_long": (
-                f"<b>Hermes</b> открыл сделку ({mode_word})\n"
-                f"{sym} · {side_word} · уверенность {conf:.2f}\n\n"
-                f"<i>{event.get('reason', '')[:500]}</i>"
-            ),
+            "body": f"{_arrow(direction)} {side_word} {sym} · {lot or ''} лот · режим {mode_word}",
+            "body_long": "\n".join(lines),
+        }
+    if t == "trade_closed":
+        # Reconciliation detected a broker-side close (SL or TP hit, or
+        # operator closed manually from MT5). Show which threshold
+        # triggered and the realised P&L.
+        sign = "+" if (pnl or 0) >= 0 else ""
+        trigger = event.get("trigger") or "manual"   # "tp" | "sl" | "manual"
+        trigger_word = {"tp": "Take Profit", "sl": "Stop Loss", "manual": "Закрыто вручную"}.get(
+            trigger, trigger,
+        )
+        emoji = "🎯" if trigger == "tp" else ("🛑" if trigger == "sl" else "✋")
+        exit_price = event.get("exit_price")
+
+        def fmt(p):
+            if p is None: return "-"
+            if p >= 1000: return f"{p:.2f}"
+            if p >= 100: return f"{p:.3f}"
+            return f"{p:.5f}"
+
+        lines = [
+            f"<b>{emoji} Hermes закрыл сделку</b>",
+            "",
+            f"<b>{sym}</b> · {trigger_word}",
+        ]
+        if exit_price is not None:
+            lines.append(f"Цена закрытия: <code>{fmt(exit_price)}</code>")
+        if pnl is not None:
+            lines.append(f"Результат: <b>{sign}{pnl:.2f}</b>")
+
+        return {
+            "title": f"Hermes · {sym} закрыто",
+            "body": f"{trigger_word} · {sign}{(pnl or 0):.2f}",
+            "body_long": "\n".join(lines),
         }
     if t == "broker_down":
         return {

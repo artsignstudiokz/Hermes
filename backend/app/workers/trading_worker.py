@@ -206,16 +206,15 @@ class TradingWorker:
         reconciliation the TradeRow would stay `closed_at IS NULL`
         forever and the Trades page would lie.
 
-        Strategy: any TradeRow for our account that's still open but
-        whose ticket is missing from the broker → assume the broker
-        closed it. We don't have the exact exit price (already gone
-        from positions_get); the broker history endpoint would have
-        it but the round-trip is heavy for every tick. For now we
-        record closed_at + reason="broker_closed" and leave
-        exit_price/pnl as the last snapshot saved.
+        v1.0.41: for each newly-closed ticket we now query the
+        broker's history (deals_get over a small recent window) to
+        find the exit price, P&L, and infer whether SL or TP fired.
+        Each close dispatches a `trade_closed` event to the notifier
+        so Telegram pings the operator with the result.
         """
         from app.db.models import TradeRow
         live_tickets = {str(p.ticket) for p in positions}
+        closed_with_info: list[tuple[TradeRow, float | None, float | None, str]] = []
         async with sm() as session:
             open_rows = (await session.execute(
                 select(TradeRow).where(
@@ -228,13 +227,19 @@ class TradingWorker:
             for row in open_rows:
                 if str(row.ticket) in live_tickets:
                     continue
-                # Already manually closed via the API? Skip - _mark_trade_closed
-                # may have just committed in a different session.
+                # Reach into the broker for exit details. Best-effort -
+                # if it fails we still mark the row closed.
+                exit_price, realised_pnl, trigger = await self._lookup_broker_close(row)
                 row.closed_at = now
-                # Don't overwrite a reason set by another path (manual /
-                # kill_switch). Only fill if the row never had one.
-                if not row.reason or row.reason in ("auto_proven", "auto_autonomous", "grid_entry"):
-                    row.reason = "broker_closed"
+                if exit_price is not None:
+                    row.exit_price = exit_price
+                if realised_pnl is not None:
+                    row.pnl = realised_pnl
+                if not row.reason or row.reason in (
+                    "auto_proven", "auto_autonomous", "grid_entry",
+                ):
+                    row.reason = f"broker_{trigger}" if trigger != "manual" else "broker_closed"
+                closed_with_info.append((row, exit_price, realised_pnl, trigger))
                 updated += 1
             if updated:
                 await session.commit()
@@ -242,6 +247,53 @@ class TradingWorker:
                     "Reconciliation: marked %d ticket(s) closed by broker",
                     updated,
                 )
+
+        # Outside the DB session: fan-out notifications. We don't await
+        # the WS broadcast or notifier inside the transaction so a slow
+        # Telegram round-trip can't stall reconciliation for the next
+        # tick.
+        for row, exit_price, realised_pnl, trigger in closed_with_info:
+            event = {
+                "type": "trade_closed",
+                "symbol": row.symbol,
+                "direction": row.direction,
+                "ticket": row.ticket,
+                "trigger": trigger,           # "tp" | "sl" | "manual"
+                "exit_price": exit_price,
+                "pnl": realised_pnl,
+                "mode": row.mode,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            }
+            try:
+                await self._ws.broadcast("signals", event)
+            except Exception:  # noqa: BLE001
+                logger.exception("WS broadcast failed for trade_closed")
+            if self._notifier is not None:
+                try:
+                    await self._notifier.dispatch(event)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Notifier dispatch failed for trade_closed")
+
+    async def _lookup_broker_close(
+        self, row: "TradeRow",
+    ) -> tuple[float | None, float | None, str]:
+        """Best-effort: ask the broker for the closing deal of `row`.
+
+        Returns (exit_price, realised_pnl, trigger). trigger ∈
+        {"tp","sl","manual"} - decided from the deal's reason code if
+        the adapter exposes it. Falls back to "manual" if we can't tell.
+        """
+        try:
+            details = await self._adapter.get_deal_for_position(row.ticket)
+        except Exception:  # noqa: BLE001
+            return (None, None, "manual")
+        if details is None:
+            return (None, None, "manual")
+        return (
+            details.get("exit_price"),
+            details.get("pnl"),
+            details.get("trigger", "manual"),
+        )
 
     async def _broker_health_probe(self) -> bool:
         """Returns True if the adapter answered, False if we should skip

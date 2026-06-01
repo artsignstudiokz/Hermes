@@ -100,6 +100,46 @@ class MT5Adapter(BrokerAdapter):
             info.server, info.login, info.balance, info.leverage,
         )
 
+    async def get_deal_for_position(self, ticket: str) -> dict | None:
+        """Walk MT5 deal history for the closing deal of `ticket`.
+
+        deals_get(position=ticket) returns every deal touching the
+        position, in chronological order. The LAST one is the close.
+        From it we read exit price + profit, and infer trigger by
+        looking at `reason`: MT5 sets it to DEAL_REASON_SL when a
+        stop-loss fires, DEAL_REASON_TP for take-profit, and other
+        codes for manual / margin closes.
+        """
+        self._ensure_connected()
+        try:
+            tid = int(ticket)
+        except (TypeError, ValueError):
+            return None
+        deals = await asyncio.to_thread(self._mt5.history_deals_get, position=tid)
+        if not deals:
+            return None
+        close_deal = deals[-1]
+        mt5 = self._mt5
+        reason = int(getattr(close_deal, "reason", -1))
+        # Standard MT5 deal-reason codes:
+        #   DEAL_REASON_SL=4, DEAL_REASON_TP=5
+        # Anything else (client, expert, margin, etc.) → "manual" for
+        # our purposes - the operator's Telegram doesn't need every
+        # MT5 internal reason code.
+        if reason == getattr(mt5, "DEAL_REASON_SL", 4):
+            trigger = "sl"
+        elif reason == getattr(mt5, "DEAL_REASON_TP", 5):
+            trigger = "tp"
+        else:
+            trigger = "manual"
+        # Sum profit across all closing deals (partial closes).
+        profit = sum(float(getattr(d, "profit", 0.0) or 0.0) for d in deals)
+        return {
+            "exit_price": float(getattr(close_deal, "price", 0.0) or 0.0),
+            "pnl": profit,
+            "trigger": trigger,
+        }
+
     async def check_autotrading(self) -> tuple[bool, str]:
         """Probe whether the user's MT5 terminal will accept algo orders.
 
