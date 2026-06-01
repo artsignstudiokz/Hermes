@@ -104,6 +104,10 @@ def _ru(event: dict) -> dict[str, str]:
             lines.append(f"Stop Loss: <code>{fmt(sl)}</code>")
         if tp is not None:
             lines.append(f"Take Profit: <code>{fmt(tp)}</code>{rr_line}")
+        risk_dollars = event.get("risk_dollars")
+        risk_pct_v = event.get("risk_pct")
+        if risk_dollars is not None and risk_pct_v is not None:
+            lines.append(f"Риск: <b>~{risk_dollars}</b> ({risk_pct_v}% эквити)")
         reason = (event.get("reason") or "")[:400]
         if reason:
             lines += ["", f"<i>{reason}</i>"]

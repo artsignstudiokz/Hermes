@@ -58,6 +58,21 @@ class BrokerAdapter(ABC):
         """
         return True, ""
 
+    async def compute_lot_for_risk(
+        self,
+        symbol: str,
+        entry_price: float,
+        sl_price: float,
+        risk_dollars: float,
+    ) -> float | None:
+        """Compute lot that risks ~risk_dollars between entry and SL.
+
+        MT5Adapter implements it via symbol_info.trade_tick_size /
+        trade_tick_value. Other adapters can return None to use
+        notional sizing instead.
+        """
+        return None
+
     async def get_deal_for_position(self, ticket: str) -> dict | None:
         """Best-effort lookup of the closing deal for a position ticket.
 

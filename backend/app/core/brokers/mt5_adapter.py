@@ -100,6 +100,47 @@ class MT5Adapter(BrokerAdapter):
             info.server, info.login, info.balance, info.leverage,
         )
 
+    async def compute_lot_for_risk(
+        self,
+        symbol: str,
+        entry_price: float,
+        sl_price: float,
+        risk_dollars: float,
+    ) -> float | None:
+        """Lot size that puts ~risk_dollars at stake between entry and SL.
+
+        Formula: ticks_to_sl × tick_value × lot = risk_dollars
+        Each symbol carries trade_tick_size (price increment per tick)
+        and trade_tick_value (account-currency value of one tick at
+        one lot). Multiplying gives risk per lot per tick; divide
+        risk_dollars by that × ticks-to-sl to get the right volume,
+        then snap to volume_step and clamp to [volume_min, volume_max].
+
+        Returns None if the broker doesn't expose tick metadata - the
+        worker falls back to its simple notional sizing then.
+        """
+        self._ensure_connected()
+        broker_symbol = await self._resolve_symbol(symbol)
+        info = await asyncio.to_thread(self._mt5.symbol_info, broker_symbol)
+        if info is None:
+            return None
+        tick_size = float(getattr(info, "trade_tick_size", 0) or 0)
+        tick_value = float(getattr(info, "trade_tick_value", 0) or 0)
+        if tick_size <= 0 or tick_value <= 0:
+            return None
+        sl_distance = abs(entry_price - sl_price)
+        if sl_distance <= 0:
+            return None
+        ticks_to_sl = sl_distance / tick_size
+        risk_per_lot = ticks_to_sl * tick_value
+        if risk_per_lot <= 0:
+            return None
+        raw_lot = float(risk_dollars) / risk_per_lot
+        step = float(info.volume_step) or 0.01
+        vmin = float(info.volume_min) or 0.01
+        vmax = float(info.volume_max) or 100.0
+        return max(vmin, min(vmax, round(round(raw_lot / step) * step, 8)))
+
     async def get_deal_for_position(self, ticket: str) -> dict | None:
         """Walk MT5 deal history for the closing deal of `ticket`.
 

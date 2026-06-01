@@ -421,8 +421,32 @@ class TradingWorker:
                 sl_price = snap.close + 2 * snap.atr
                 tp_price = snap.close - 4 * snap.atr
 
+        # v1.0.43: risk-based sizing for the live bot. Target = 1% of
+        # equity at stake if the broker-side SL fires. Computed from
+        # the symbol's tick_value × ticks-to-SL so we get the same
+        # dollar risk on EURUSD (5-digit FX) and XAUUSD (2-digit
+        # metals) without per-instrument constants. Falls back to the
+        # legacy 0.5% notional sizing only if the adapter can't read
+        # tick metadata (non-MT5 / unconfigured symbol). Test trades
+        # in trading_service.manual_open keep the old 0.5% notional
+        # so the operator's "Тест-сделка" button stays at the broker
+        # minimum.
         equity = float(self._risk.state.last_equity or 0.0)
-        lot_size = _scale_lot(equity, risk_pct=0.5)
+        TARGET_RISK_PCT = 1.0
+        risk_dollars = equity * TARGET_RISK_PCT / 100.0
+        lot_size: float | None = None
+        if sl_price is not None and snap is not None:
+            try:
+                lot_size = await self._adapter.compute_lot_for_risk(
+                    symbol=best.symbol,
+                    entry_price=snap.close,
+                    sl_price=sl_price,
+                    risk_dollars=risk_dollars,
+                )
+            except Exception:  # noqa: BLE001
+                lot_size = None
+        if lot_size is None:
+            lot_size = _scale_lot(equity, risk_pct=0.5)
 
         async with self._entry_lock:
             if self._trades_today >= self._max_trades_per_day:
@@ -469,6 +493,8 @@ class TradingWorker:
             "entry": getattr(order, "entry_price", None),
             "sl": sl_price,
             "tp": tp_price,
+            "risk_dollars": round(risk_dollars, 2),
+            "risk_pct": TARGET_RISK_PCT,
             "ts": self._last_tick.isoformat(),
         }
         await self._ws.broadcast("signals", trade_event)
