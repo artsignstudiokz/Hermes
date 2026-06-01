@@ -10,12 +10,16 @@ interface SignalEvent {
   direction?: string;
   level?: number;
   lots?: number;
+  lot_size?: number;
   price?: number;
   pnl?: number;
   reason?: string;
   ts?: string;
   message?: string;
   closed_count?: number;
+  mode?: string;
+  confidence?: number;
+  trades_today?: number;
 }
 
 interface ToastEntry extends SignalEvent {
@@ -29,7 +33,21 @@ export function SignalToasts() {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
 
   useEffect(() => {
+    // v1.0.41: only surface user-visible events. The legacy grid
+    // strategy still runs in dry_run mode every tick (it powers the
+    // indicator panel) and emits internal "open" / "close_basket"
+    // actions over /ws/signals. Those were misleading the user into
+    // thinking sales/buys at 0.1 lot were happening on real money -
+    // they weren't. Real broker fills come in as type="trade_opened".
+    const VISIBLE = new Set([
+      "trade_opened",
+      "kill_switch",
+      "broker_down",
+      "risk_block",
+      "error",
+    ]);
     return subscribe<SignalEvent>("signals", (event) => {
+      if (!VISIBLE.has(event.type)) return;
       const id = nextId++;
       setToasts((prev) => [...prev.slice(-3), { ...event, id }]);
       window.setTimeout(() => {
@@ -75,17 +93,23 @@ export function SignalToasts() {
 }
 
 function labelFor(t: SignalEvent): string {
-  if (t.type === "open") return `Открытие · ${t.symbol}`;
-  if (t.type === "close_basket") return `Закрытие · ${t.symbol}`;
+  if (t.type === "trade_opened") return `Сделка открыта · ${t.symbol}`;
   if (t.type === "kill_switch") return "Аварийная остановка";
+  if (t.type === "broker_down") return "Брокер недоступен";
+  if (t.type === "risk_block") return "Риск-фильтр заблокировал вход";
   if (t.type === "error") return "Ошибка стратегии";
   return t.type;
 }
 
 function detailFor(t: SignalEvent): string {
-  if (t.type === "open") return `${t.direction === "long" ? "Покупка" : "Продажа"} · уровень ${t.level} · ${t.lots} лот @ ${t.price?.toFixed(5)}`;
-  if (t.type === "close_basket") return `${t.reason ?? ""} · P&L: ${t.pnl?.toFixed(2)}`;
-  if (t.type === "kill_switch") return `Закрыто позиций: ${t.closed_count}`;
+  if (t.type === "trade_opened") {
+    const dir = t.direction === "long" ? "Покупка" : "Продажа";
+    const conf = t.confidence != null ? ` · уверенность ${t.confidence.toFixed(2)}` : "";
+    return `${dir}${conf} · режим ${t.mode ?? "-"}`;
+  }
+  if (t.type === "kill_switch") return `Закрыто позиций: ${t.closed_count ?? 0}`;
+  if (t.type === "broker_down") return t.reason ?? "MT5 не отвечает на health-probe.";
+  if (t.type === "risk_block") return `${t.symbol ?? ""}: ${t.reason ?? "блокировка риска"}`;
   if (t.type === "error") return t.message ?? "-";
   return "";
 }

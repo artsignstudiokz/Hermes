@@ -48,6 +48,16 @@ class BrokerAdapter(ABC):
     @abstractmethod
     async def disconnect(self) -> None: ...
 
+    async def check_autotrading(self) -> tuple[bool, str]:
+        """Probe whether the broker accepts algo orders right now.
+
+        Default: always OK. MT5Adapter overrides this to inspect
+        terminal_info().trade_allowed - some users have AutoTrading
+        disabled in the MT5 client and every order_send fails with
+        retcode 10027 until they enable it.
+        """
+        return True, ""
+
     # ── Account ──────────────────────────────────────────────────────────────
     @abstractmethod
     async def get_account(self) -> AccountInfo: ...

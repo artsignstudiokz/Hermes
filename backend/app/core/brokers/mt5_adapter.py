@@ -100,6 +100,33 @@ class MT5Adapter(BrokerAdapter):
             info.server, info.login, info.balance, info.leverage,
         )
 
+    async def check_autotrading(self) -> tuple[bool, str]:
+        """Probe whether the user's MT5 terminal will accept algo orders.
+
+        v1.0.41: the v1.0.40 user couldn't get a single trade open
+        because AutoTrading was disabled in their MT5 (the green-arrow
+        toolbar button). Every order_send came back with retcode 10027
+        "AutoTrading disabled by client". The error wasn't on us, but
+        the bot kept trying for an entire trading day silently.
+
+        Returns (ok, reason). Call this from worker.start and
+        manual_open so we refuse to even try when the terminal won't
+        allow it - and tell the operator exactly which checkbox to
+        flip.
+        """
+        self._ensure_connected()
+        info = await asyncio.to_thread(self._mt5.terminal_info)
+        if info is None:
+            return False, "MT5 terminal_info() вернул None - проверьте что терминал открыт."
+        if not getattr(info, "trade_allowed", True):
+            return False, (
+                "В MetaTrader 5 не включён AutoTrading. "
+                "Нажмите зелёную кнопку «Алготрейдинг» в тулбаре MT5 "
+                "(или Ctrl+E) - бот не может отправлять ордера пока она серая."
+            )
+        # connected=True / dlls_allowed=True / trade_allowed=True
+        return True, ""
+
     async def disconnect(self) -> None:
         if not self._connected or self._mt5 is None:
             return

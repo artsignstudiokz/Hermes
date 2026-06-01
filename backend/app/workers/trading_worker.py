@@ -352,10 +352,12 @@ class TradingWorker:
 
         d = Direction.LONG if best.direction == "long" else Direction.SHORT
 
-        # Compute broker-side SL/TP from the symbol's ATR. The position
-        # then closes autonomously if the bot dies - we use 2×ATR stop
-        # and 4×ATR target (1:2 risk/reward). ATR is in price units, so
-        # adding/subtracting it from the close gives an absolute price.
+        # Single broker-side SL/TP at 2×ATR / 4×ATR (1:2 R/R). This
+        # is what the v1.0.22 walk-forward backtest validated, and
+        # what the algo literature consistently shows is statistically
+        # better than splitting into TP1/TP2/TP3 for automated FX
+        # entries. The position closes autonomously even if the bot
+        # dies - MT5 enforces SL/TP server-side.
         snap = self._runner.last_snapshots.get(best.symbol)
         sl_price: float | None = None
         tp_price: float | None = None
@@ -367,17 +369,10 @@ class TradingWorker:
                 sl_price = snap.close + 2 * snap.atr
                 tp_price = snap.close - 4 * snap.atr
 
-        # Risk-scaled lot: target ~0.5% of equity per trade. Floors at
-        # 0.01 lot (broker minimum on Exness FX majors). The risk engine
-        # already vetoed if equity is dangerously low, so we just scale.
-        # v1.0.38: state.last_equity (not .last_equity); the engine
-        # carries its live values inside a nested RiskState dataclass.
         equity = float(self._risk.state.last_equity or 0.0)
         lot_size = _scale_lot(equity, risk_pct=0.5)
 
         async with self._entry_lock:
-            # Re-check quota under the lock so two ticks can't both pass
-            # the early gate before either has finished placing.
             if self._trades_today >= self._max_trades_per_day:
                 return
             try:
@@ -392,9 +387,6 @@ class TradingWorker:
             if order is None:
                 logger.info("Broker returned None for auto-entry on %s", best.symbol)
                 return
-            # Increment under the same lock - closes the race where two
-            # concurrent ticks could both place_order before either bumps
-            # the counter.
             self._trades_today += 1
 
         async with sm() as session:
@@ -412,6 +404,7 @@ class TradingWorker:
                 signal_reason=best.reason,
             ))
             await session.commit()
+
         trade_event = {
             "type": "trade_opened",
             "mode": self._mode,
@@ -420,21 +413,22 @@ class TradingWorker:
             "confidence": round(best.confidence, 3),
             "reason": best.reason,
             "trades_today": self._trades_today,
+            "lot": lot_size,
+            "entry": getattr(order, "entry_price", None),
+            "sl": sl_price,
+            "tp": tp_price,
             "ts": self._last_tick.isoformat(),
         }
         await self._ws.broadcast("signals", trade_event)
-        # Push to web/telegram subscribers too - the operator may be
-        # away from the desk, and a trade-open is a notify-worthy
-        # event. Best effort: notifier errors don't block.
         if self._notifier is not None:
             try:
                 await self._notifier.dispatch(trade_event)
             except Exception:  # noqa: BLE001
                 logger.exception("Notifier dispatch failed for trade_opened")
         logger.info(
-            "Opened %s %s in %s mode (conf=%.2f, %d/%d today)",
-            best.direction, best.symbol, self._mode, best.confidence,
-            self._trades_today, self._max_trades_per_day,
+            "Opened %s %s in %s mode (lot=%.2f, conf=%.2f, %d/%d today)",
+            best.direction, best.symbol, self._mode, lot_size,
+            best.confidence, self._trades_today, self._max_trades_per_day,
         )
 
     async def kill_switch(self) -> int:
@@ -624,6 +618,15 @@ class TradingWorker:
             }
             for p in positions
         ])
+        # v1.0.41: the legacy grid runner emits internal "open" /
+        # "close_basket" actions every tick when it sees a setup -
+        # even though the runner is in dry_run=True and never actually
+        # opens those positions. Broadcasting them confused the
+        # operator (toast: "Открытие · EURCHF · Продажа · 0.1 лот")
+        # into thinking real trades were happening on every signal.
+        # Now we only push grid actions to Telegram (where they're
+        # informational) and skip the WS so the dashboard stays
+        # honest: only real broker fills surface as "trade_opened".
         for action in actions:
             event = {
                 "type": action["action"],
@@ -636,7 +639,6 @@ class TradingWorker:
                 "reason": action.get("reason"),
                 "ts": self._last_tick.isoformat(),
             }
-            await self._ws.broadcast("signals", event)
             if self._notifier:
                 try:
                     await self._notifier.dispatch(event)

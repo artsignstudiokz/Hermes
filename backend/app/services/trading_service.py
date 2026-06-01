@@ -94,6 +94,17 @@ class TradingService:
         )
 
         adapter = await self._registry.connect(broker_account_id, creds)
+
+        # v1.0.41: refuse to start if the broker terminal won't accept
+        # algo orders. Without this check the worker would burn through
+        # ticks all day, log "Order failed: AutoTrading disabled" every
+        # 60s, and the operator would only realise after their first
+        # missed signal. Failing fast with a clear instruction is much
+        # nicer than silent rejection.
+        ok, reason = await adapter.check_autotrading()
+        if not ok:
+            raise ValueError(reason)
+
         symbols = params.get("symbols") or [
             "EURUSD", "GBPUSD", "EURCHF", "EURJPY", "USDCHF", "USDJPY",
         ]
@@ -299,6 +310,13 @@ class TradingService:
         adapter = self._registry.get_active()
         if adapter is None:
             raise ValueError("No active broker - connect one first")
+
+        # v1.0.41: same pre-flight as TradingService.start. Saves the
+        # operator from a cryptic "Брокер отклонил ордер" toast when the
+        # real fix is one click in their MT5 terminal.
+        ok, reason = await adapter.check_autotrading()
+        if not ok:
+            raise ValueError(reason)
 
         # Explicit-args path (legacy / tests).
         if symbol and direction and lot_size:
