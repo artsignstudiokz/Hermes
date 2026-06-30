@@ -25,6 +25,7 @@ export function Backtest() {
   const runs = useBacktestRuns();
   const start = useStartBacktest();
   const [days, setDays] = useState(30);
+  const [mode, setMode] = useState<"proven" | "autonomous" | "legacy">("proven");
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
   const detail = useBacktestRun(activeRunId);
@@ -45,6 +46,7 @@ export function Backtest() {
       params: config.data.payload as unknown as Record<string, unknown>,
       symbols: config.data.payload.symbols,
       days,
+      mode,
     });
     setActiveRunId(run_id);
   };
@@ -72,6 +74,16 @@ export function Backtest() {
         </div>
 
         <div className="flex items-center gap-2">
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "proven" | "autonomous" | "legacy")}
+            className="form-input"
+            title="Какую стратегию прогоняем"
+          >
+            <option value="proven">🛡 Проверенный (Trend Following)</option>
+            <option value="autonomous">🧠 Автономный (ансамбль)</option>
+            <option value="legacy">Legacy grid (старый движок)</option>
+          </select>
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}

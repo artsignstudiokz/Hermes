@@ -15,6 +15,7 @@ export interface BacktestStartInput {
   params: Record<string, unknown>;
   symbols: string[];
   days?: number;
+  mode?: "proven" | "autonomous" | "legacy";
 }
 
 export function useBacktestRuns(limit = 20) {

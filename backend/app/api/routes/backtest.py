@@ -17,7 +17,7 @@ async def run(
     req: BacktestStartRequest,
     svc: BacktestService = Depends(get_backtest_service),
 ) -> dict[str, int]:
-    run_id = await svc.submit(req.params, req.symbols, req.days)
+    run_id = await svc.submit(req.params, req.symbols, req.days, req.mode)
     return {"run_id": run_id}
 
 

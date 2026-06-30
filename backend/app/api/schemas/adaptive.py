@@ -45,6 +45,9 @@ class BacktestStartRequest(BaseModel):
     params: dict
     symbols: list[str]
     days: int = 90
+    # v1.0.44: "proven" / "autonomous" run the new explainable
+    # ensemble backtest; "legacy" stays on the grid engine.
+    mode: str = "proven"
 
 
 class OptimizeStartRequest(BaseModel):

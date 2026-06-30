@@ -13,6 +13,7 @@ import pandas as pd
 from app.api.ws.manager import get_ws_manager
 from app.core.adaptive.walk_forward import run_backtest
 from app.core.brokers.registry import BrokerRegistry
+from app.core.strategy.ensemble_backtest import run_ensemble_backtest
 from app.db.models import BacktestRun
 from app.db.session import get_sessionmaker
 
@@ -32,23 +33,37 @@ class BacktestService:
     MAX_DAYS = 60
     MAX_SYMBOLS = 8
 
-    async def submit(self, params: dict, symbols: list[str], days: int) -> int:
-        """Persist a row, kick off a task, return run_id."""
+    async def submit(
+        self, params: dict, symbols: list[str], days: int, mode: str = "proven",
+    ) -> int:
+        """Persist a row, kick off a task, return run_id.
+
+        v1.0.44: `mode` selects the engine. "proven" / "autonomous"
+        run the new bar-by-bar explainable ensemble (the strategies
+        the live bot actually uses). "legacy" keeps the old grid
+        engine for backwards-compat.
+        """
         days = max(1, min(int(days), self.MAX_DAYS))
         symbols = symbols[: self.MAX_SYMBOLS]
         sm = get_sessionmaker()
         async with sm() as session:
-            row = BacktestRun(params={**params, "symbols": symbols, "days": days}, status="pending")
+            row = BacktestRun(
+                params={**params, "symbols": symbols, "days": days, "mode": mode},
+                status="pending",
+            )
             session.add(row)
             await session.commit()
             await session.refresh(row)
             run_id = row.id
 
-        task = asyncio.create_task(self._run(run_id, params, symbols, days))
+        task = asyncio.create_task(self._run(run_id, params, symbols, days, mode))
         self._tasks[run_id] = task
         return run_id
 
-    async def _run(self, run_id: int, params: dict, symbols: list[str], days: int) -> None:
+    async def _run(
+        self, run_id: int, params: dict, symbols: list[str], days: int,
+        mode: str = "proven",
+    ) -> None:
         sm = get_sessionmaker()
         ws_topic = f"backtest_{run_id}"
         await self._broadcast(ws_topic, {"type": "started", "run_id": run_id})
@@ -81,15 +96,26 @@ class BacktestService:
                 raise RuntimeError("No data fetched - backtest aborted")
 
             await self._broadcast(ws_topic, {"type": "progress", "stage": "running", "pct": 50})
-            # 5-minute hard timeout: if the legacy engine hangs (or in a
-            # frozen build, manages to walk into a bad C-extension state),
-            # we cancel cleanly instead of leaving the user with a stuck
-            # progress bar forever.
+            # 5-minute hard timeout: if the engine hangs we cancel
+            # cleanly instead of leaving the user with a stuck progress
+            # bar forever.
             try:
-                metrics = await asyncio.wait_for(
-                    asyncio.to_thread(run_backtest, data, params, 10_000.0),
-                    timeout=300,
-                )
+                if mode in ("proven", "autonomous"):
+                    # New explainable-ensemble engine. Replays bar-by-
+                    # bar through the same code path the live worker
+                    # uses, so what you see in the backtest is what the
+                    # bot would have done.
+                    metrics = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            run_ensemble_backtest, data, mode, params, 10_000.0,
+                        ),
+                        timeout=300,
+                    )
+                else:
+                    metrics = await asyncio.wait_for(
+                        asyncio.to_thread(run_backtest, data, params, 10_000.0),
+                        timeout=300,
+                    )
             except asyncio.TimeoutError as e:
                 raise RuntimeError("Backtest exceeded 5-minute limit - try fewer days or pairs") from e
             await self._broadcast(ws_topic, {"type": "progress", "stage": "running", "pct": 95})
