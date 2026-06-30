@@ -261,23 +261,30 @@ def test_init_db_adds_mode_and_signal_reason_columns():
 # ── REST routes: new endpoints exist + return 200/400 ───────────────
 
 
-def test_new_routes_registered():
-    from app.main import app
-    # FastAPI 0.118+ keeps include_router-mounted routers in app.routes
-    # as `_IncludedRouter` objects (no `.path`), alongside the plain
-    # Route objects for top-level @app.get / @app.post handlers. Walk
-    # both so every endpoint is enumerated.
+def test_new_routes_registered(tmp_data_dir):
+    # Use the create_app() factory so we get a fresh app with all
+    # include_router calls applied. The module-level `from app.main
+    # import app` is fragile across test ordering: by the time this
+    # runs, autouse fixtures (and pytest_asyncio's event-loop dance)
+    # have re-imported app.main with different env vars, and the
+    # original module-level `app` object can lose state. Factories
+    # don't carry that risk.
+    from app.main import create_app
+    app = create_app()
+
     def _collect_paths(routes) -> set[str]:
         out: set[str] = set()
         for r in routes:
-            if hasattr(r, "path") and isinstance(getattr(r, "path", None), str):
-                out.add(r.path)
-            if hasattr(r, "routes"):
-                out |= _collect_paths(r.routes)
+            p = getattr(r, "path", None)
+            if isinstance(p, str):
+                out.add(p)
+            sub = getattr(r, "routes", None)
+            if sub:
+                out |= _collect_paths(sub)
         return out
 
     paths = _collect_paths(app.routes)
-    assert "/api/trading/start-proven" in paths
+    assert "/api/trading/start-proven" in paths, f"missing - got {sorted(paths)[:10]}"
     assert "/api/trading/start-autonomous" in paths
     assert "/api/trading/analyze" in paths
     assert "/api/trading/test-order" in paths
