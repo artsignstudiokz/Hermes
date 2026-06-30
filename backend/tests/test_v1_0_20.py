@@ -263,7 +263,20 @@ def test_init_db_adds_mode_and_signal_reason_columns():
 
 def test_new_routes_registered():
     from app.main import app
-    paths = {r.path for r in app.routes}
+    # FastAPI 0.118+ keeps include_router-mounted routers in app.routes
+    # as `_IncludedRouter` objects (no `.path`), alongside the plain
+    # Route objects for top-level @app.get / @app.post handlers. Walk
+    # both so every endpoint is enumerated.
+    def _collect_paths(routes) -> set[str]:
+        out: set[str] = set()
+        for r in routes:
+            if hasattr(r, "path") and isinstance(getattr(r, "path", None), str):
+                out.add(r.path)
+            if hasattr(r, "routes"):
+                out |= _collect_paths(r.routes)
+        return out
+
+    paths = _collect_paths(app.routes)
     assert "/api/trading/start-proven" in paths
     assert "/api/trading/start-autonomous" in paths
     assert "/api/trading/analyze" in paths
